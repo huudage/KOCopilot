@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>爆款拆解工坊 — KOCopilot</title>
+    <meta name="description" content="粘贴爆款视频台词，AI 提取 Hook / 节奏 / CTA 骨架，引导式问答生成原创脚本。" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="app-screens.css" />
+  </head>
+  <body>
+    <header class="koc-topbar" role="banner">
+      <div class="koc-topbar__inner">
+        <a class="koc-brand" href="index.html">KOCopilot</a>
+        <nav class="koc-nav" aria-label="主功能">
+          <a href="index.html">工作台</a>
+          <a href="feature-1.html" aria-current="page">爆款拆解</a>
+          <a href="feature-2.html">人设生成</a>
+          <a href="feature-3.html">标题车间</a>
+          <a href="feature-4.html">评论分拣</a>
+        </nav>
+        <div class="koc-nav koc-nav--muted">
+          <a href="landing.html">产品说明</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <header class="koc-hero">
+        <span class="koc-badge">模块一 · 爆款拆解</span>
+        <h1>爆款<em>逆向拆解</em>与脚本引擎</h1>
+        <p class="koc-lead">
+          粘贴对标爆款台词 → AI 拆出 Hook / Body / CTA 骨架 → 输出可迁移内容模板。<b>v0.1：先用文本台词，ASR 上传在 v0.2 接入。</b>
+        </p>
+      </header>
+
+      <div class="koc-feature">
+        <aside class="koc-side" aria-label="工作流">
+          <h3>工作流</h3>
+          <ul class="koc-steps">
+            <li class="is-done" data-step="1">粘贴对标视频台词</li>
+            <li aria-current="step" data-step="2">AI 拆解骨架</li>
+            <li data-step="3">引导式问答（v0.2）</li>
+            <li data-step="4">生成原创脚本（v0.2）</li>
+            <li data-step="5">导出 / 进入标题车间</li>
+          </ul>
+        </aside>
+
+        <section class="koc-stage">
+          <article class="koc-panel" aria-labelledby="step-upload">
+            <div class="koc-panel__head">
+              <div>
+                <h2 id="step-upload">第 1 步 · 上传视频或粘贴台词</h2>
+                <p>选择视频后浏览器自动抽轨为音频 → 后端火山豆包 2.0 识别 → 自动填入下方文本框。</p>
+              </div>
+              <span class="koc-pill" id="koc-asr-pill">豆包 ASR</span>
+            </div>
+
+            <div class="koc-uploader" id="uploader">
+              <div class="koc-uploader__icon">↓</div>
+              <p class="koc-uploader__title">点击选择 / 拖拽 视频或音频</p>
+              <p class="koc-uploader__hint">
+                支持 mp4 / mov / mp3 / m4a / wav；建议时长 ≤ 5 分钟，文件 ≤ 200 MB。
+              </p>
+              <input
+                id="koc-asr-file"
+                type="file"
+                accept="video/*,audio/*"
+                style="margin-top: 0.6rem;"
+              />
+              <div id="koc-asr-status" class="koc-asr-status" hidden></div>
+            </div>
+          </article>
+
+          <article class="koc-panel" aria-labelledby="step-skeleton">
+            <div class="koc-panel__head">
+              <div>
+                <h2 id="step-skeleton">第 2 步 · AI 拆解骨架</h2>
+                <p>包含 Hook 策略、叙事节奏与 CTA 设计的可迁移模板。</p>
+              </div>
+              <span class="koc-pill">DeepSeek</span>
+            </div>
+
+            <div class="koc-skeleton">
+              <div class="koc-skeleton__time">0:00–0:05</div>
+              <div class="koc-skeleton__body">
+                <h4>Hook · 反常识陈述</h4>
+                <p>原视频前 3 秒台词：「90% 的人冰箱都用错了——你以为塞满才划算，其实越满越浪费。」</p>
+                <em>可迁移：用反常识观点撬动停留。</em>
+              </div>
+            </div>
+
+            <div class="koc-skeleton">
+              <div class="koc-skeleton__time">0:05–1:30</div>
+              <div class="koc-skeleton__body">
+                <h4>Body · 4 段递进</h4>
+                <p>① 暴露问题（拍杂乱冰箱）→ ② 提出 3 步法 → ③ 实拍演示对比 → ④ 用户自测题。</p>
+                <em>情绪曲线：好奇 → 共鸣 → 反转 → 认同。</em>
+              </div>
+            </div>
+
+            <div class="koc-skeleton">
+              <div class="koc-skeleton__time">1:30–2:14</div>
+              <div class="koc-skeleton__body">
+                <h4>CTA · 评论区话题</h4>
+                <p>「你家冰箱属于哪一种？把首字母打在评论区，我下期挨个点评。」</p>
+                <em>可迁移：低门槛 + 个性化承诺，激发互动。</em>
+              </div>
+            </div>
+          </article>
+
+          <article class="koc-panel" aria-labelledby="step-qa">
+            <div class="koc-panel__head">
+              <div>
+                <h2 id="step-qa">第 3 步 · 引导式问答（v0.2）</h2>
+                <p>每一步基于骨架自动出题，3-7 轮收敛成原创脚本。本期为静态预览。</p>
+              </div>
+              <span class="koc-pill">填空式创作</span>
+            </div>
+
+            <div class="koc-qa">
+              <div class="koc-qa__bot">
+                原视频在第 5 秒用了一个「职场反常识」作为 Hook。结合你的<b>「平价好物分享」</b>人设，你想用哪个「消费反常识」做钩子？
+              </div>
+              <div class="koc-qa__opts">
+                <button class="koc-qa__opt is-selected" type="button">便宜的护肤品反而更纯净</button>
+                <button class="koc-qa__opt" type="button">大牌口红的实际使用频率远低于平价</button>
+                <button class="koc-qa__opt" type="button">让我自己输入…</button>
+              </div>
+            </div>
+          </article>
+
+          <article class="koc-panel" aria-labelledby="step-final">
+            <div class="koc-panel__head">
+              <div>
+                <h2 id="step-final">第 4 步 · 原创分镜脚本（草稿，v0.2）</h2>
+                <p>结构延续骨架，文字均为基于你回答的新内容。</p>
+              </div>
+              <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                <button class="btn btn-ghost sm" type="button">复制纯文本</button>
+                <a class="btn btn-primary sm" href="feature-3.html">下一步：标题车间 →</a>
+              </div>
+            </div>
+
+            <div class="koc-skeleton">
+              <div class="koc-skeleton__time">0:00–0:05</div>
+              <div class="koc-skeleton__body">
+                <h4>Hook</h4>
+                <p>「越贵的护肤品成分越好？我给你看看专柜热销和 39 元成分表的对比——你绝对会被气笑。」</p>
+              </div>
+            </div>
+            <div class="koc-skeleton">
+              <div class="koc-skeleton__time">0:05–1:20</div>
+              <div class="koc-skeleton__body">
+                <h4>Body · 闺蜜对话切入</h4>
+                <p>① 闺蜜来家试用 → ② 摊出 3 张成分表 → ③ 拆穿 1 个常见智商税 → ④ 给出「3 看 2 不看」原则。</p>
+              </div>
+            </div>
+            <div class="koc-skeleton">
+              <div class="koc-skeleton__time">1:20–1:55</div>
+              <div class="koc-skeleton__body">
+                <h4>CTA</h4>
+                <p>「你最近被什么平价好物惊艳过？把名字打在评论区，下期我做《打工人值得屯的 10 件》。」</p>
+              </div>
+            </div>
+          </article>
+        </section>
+      </div>
+    </main>
+
+    <footer class="koc-footer">
+      KOCopilot · MVP · <a href="landing.html">产品说明</a>
+    </footer>
+    <script src="api.js" defer></script>
+    <script src="interactions.js" defer></script>
+    <script type="module" src="asr-uploader.js"></script>
+  </body>
+</html>

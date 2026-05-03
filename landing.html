@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>产品说明 — KOCopilot</title>
+    <meta
+      name="description"
+      content="KOCopilot 创作者智能副驾：从爆款拆解到评论运营的端到端 AI 工作流。"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="app-screens.css" />
+    <style>
+      /* landing 专属：长页 hero、特性栏、对比表 */
+      .lp-hero {
+        padding: 4rem 0 3rem;
+        display: grid;
+        grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+        gap: 3rem;
+        align-items: center;
+      }
+      @media (max-width: 900px) {
+        .lp-hero {
+          grid-template-columns: 1fr;
+          padding-top: 2.4rem;
+        }
+      }
+      .lp-hero h1 {
+        font-family: var(--font-display);
+        font-size: clamp(2.2rem, 4vw, 3.2rem);
+        font-weight: 400;
+        line-height: 1.1;
+        margin: 0 0 1.1rem;
+        letter-spacing: -0.02em;
+      }
+      .lp-hero h1 em {
+        font-style: normal;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 130%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .lp-hero p {
+        font-size: 1.08rem;
+        color: var(--ink-muted);
+        margin: 0 0 1.5rem;
+        max-width: 32rem;
+      }
+      .lp-actions {
+        display: flex;
+        gap: 0.7rem;
+        flex-wrap: wrap;
+      }
+      .lp-mock {
+        background: linear-gradient(160deg, #fff 0%, #f4f1ff 100%);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        box-shadow: var(--shadow-lg);
+        padding: 1.4rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.85rem;
+      }
+      .lp-mock-tab {
+        display: flex;
+        gap: 0.4rem;
+        align-items: center;
+      }
+      .lp-mock-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--line-strong);
+      }
+      .lp-mock-dot--accent {
+        background: var(--primary);
+      }
+      .lp-mock-line {
+        height: 8px;
+        border-radius: 4px;
+        background: linear-gradient(90deg, var(--primary-100), transparent 70%);
+      }
+      .lp-mock-card {
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 0.9rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+      .lp-mock-card b {
+        font-size: 0.92rem;
+      }
+      .lp-mock-card span {
+        font-size: 0.78rem;
+        color: var(--ink-muted);
+      }
+      .lp-mock-card mark {
+        background: var(--accent);
+        color: #1a1632;
+        padding: 0 0.3rem;
+        border-radius: 3px;
+        font-weight: 600;
+      }
+      .lp-pain {
+        margin: 2.5rem 0 1.6rem;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 1rem;
+      }
+      @media (max-width: 760px) {
+        .lp-pain {
+          grid-template-columns: 1fr;
+        }
+      }
+      .lp-pain article {
+        padding: 1.2rem 1.3rem;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--surface);
+        box-shadow: var(--shadow-sm);
+      }
+      .lp-pain h3 {
+        margin: 0 0 0.4rem;
+        font-size: 1rem;
+      }
+      .lp-pain p {
+        margin: 0;
+        font-size: 0.88rem;
+        color: var(--ink-muted);
+        line-height: 1.6;
+      }
+      .lp-pain .lp-pain-num {
+        display: inline-block;
+        font-family: var(--font-display);
+        font-size: 1.6rem;
+        color: var(--primary);
+        margin-right: 0.4rem;
+      }
+      .lp-flow {
+        margin: 2.4rem 0;
+        padding: 1.8rem 1.6rem;
+        background: linear-gradient(135deg, #fff 0%, var(--bg-deep) 130%);
+        border: 1px solid var(--line);
+        border-radius: 18px;
+      }
+      .lp-flow ol {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 1rem;
+      }
+      @media (max-width: 900px) {
+        .lp-flow ol {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 520px) {
+        .lp-flow ol {
+          grid-template-columns: 1fr;
+        }
+      }
+      .lp-flow ol li {
+        padding: 0.95rem 1rem;
+        background: #fff;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        font-size: 0.9rem;
+      }
+      .lp-flow ol li b {
+        display: block;
+        font-size: 0.8rem;
+        color: var(--primary-700);
+        margin-bottom: 0.3rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+      }
+      .lp-modules {
+        margin: 2.4rem 0;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+      }
+      @media (max-width: 760px) {
+        .lp-modules {
+          grid-template-columns: 1fr;
+        }
+      }
+      .lp-modules article {
+        padding: 1.4rem 1.5rem;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: var(--shadow-sm);
+      }
+      .lp-modules h3 {
+        margin: 0 0 0.4rem;
+        font-size: 1.1rem;
+      }
+      .lp-modules p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--ink-muted);
+        line-height: 1.6;
+      }
+      .lp-modules .lp-mod-foot {
+        margin-top: 0.85rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .lp-modules .lp-mod-foot a {
+        font-weight: 600;
+        font-size: 0.85rem;
+      }
+
+      .lp-disclaim {
+        margin: 2rem 0 0;
+        padding: 1.4rem 1.5rem;
+        background: linear-gradient(135deg, #fff 0%, var(--bg-deep) 100%);
+        border-left: 4px solid var(--primary);
+        border-radius: 0 14px 14px 0;
+      }
+      .lp-disclaim h3 {
+        margin: 0 0 0.5rem;
+        font-size: 1rem;
+      }
+      .lp-disclaim p {
+        margin: 0;
+        font-size: 0.86rem;
+        color: var(--ink-muted);
+        line-height: 1.65;
+      }
+    </style>
+  </head>
+  <body>
+    <header class="koc-topbar" role="banner">
+      <div class="koc-topbar__inner">
+        <a class="koc-brand" href="index.html">KOCopilot</a>
+        <nav class="koc-nav" aria-label="主功能">
+          <a href="index.html">工作台</a>
+          <a href="feature-1.html">爆款拆解</a>
+          <a href="feature-2.html">人设生成</a>
+          <a href="feature-3.html">标题车间</a>
+          <a href="feature-4.html">评论分拣</a>
+        </nav>
+        <div class="koc-nav koc-nav--muted">
+          <a href="landing.html" aria-current="page">产品说明</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="lp-hero">
+        <div>
+          <span class="koc-badge">Demo · 静态高保真</span>
+          <h1>让一个人，<br />干出一个 <em>MCN 团队</em>的产出。</h1>
+          <p>
+            KOCopilot 把顶尖 MCN 的「爆款拆解 → 人设定位 → 长尾分发 → 互动运营」四大能力，封装成
+            4 个一键操作的 AI 工作台。
+          </p>
+          <div class="lp-actions">
+            <a class="btn btn-primary" href="index.html">进入工作台</a>
+            <a class="btn btn-ghost" href="feature-1.html">看一眼爆款拆解</a>
+          </div>
+        </div>
+
+        <aside class="lp-mock" aria-hidden="true">
+          <div class="lp-mock-tab">
+            <span class="lp-mock-dot"></span>
+            <span class="lp-mock-dot"></span>
+            <span class="lp-mock-dot lp-mock-dot--accent"></span>
+            <span style="margin-left: auto; font-size: 0.78rem; color: var(--ink-muted);">koc-copilot</span>
+          </div>
+          <div class="lp-mock-line"></div>
+          <div class="lp-mock-card">
+            <b>爆款骨架已生成</b>
+            <span>Hook · 反常识陈述 — <mark>"90% 的人冰箱都用错了"</mark></span>
+            <span>Body · 4 段递进 / 情绪曲线 好奇→共鸣→反转→认同</span>
+            <span>CTA · 评论区话题——「你家冰箱属于哪一种？」</span>
+          </div>
+          <div class="lp-mock-card">
+            <b>引导问答 (3 / 5)</b>
+            <span>结合你的「平价好物」人设，要不要换成<mark>「消费反常识」</mark>钩子？</span>
+          </div>
+        </aside>
+      </section>
+
+      <h2 class="koc-sec-title">普通 KOC 面对的三大死亡螺旋</h2>
+      <div class="lp-pain">
+        <article>
+          <h3><span class="lp-pain-num">01</span>选题 / 创作焦虑</h3>
+          <p>
+            刷得到爆款，但拆不出公式：Hook 怎么钩？节奏怎么走？CTA 怎么落？空白文档面前每天耗 6-10 小时。
+          </p>
+        </article>
+        <article>
+          <h3><span class="lp-pain-num">02</span>人设同质化</h3>
+          <p>
+            盲目跟风「泛美妆」「泛生活」，没有差异化定位。广告主来了，看不出你的不可替代性。
+          </p>
+        </article>
+        <article>
+          <h3><span class="lp-pain-num">03</span>运营降级</h3>
+          <p>
+            创作完已耗尽精力 → 标题随便 / 标签混乱 / 评论区放任。错失算法核心权重的搜索流量与互动率。
+          </p>
+        </article>
+      </div>
+
+      <h2 class="koc-sec-title">我们怎么解？四步端到端 AI 工作流</h2>
+      <p class="koc-sec-sub">每一步都封装了 MCN 编导的方法论，操作只需「输入 / 上传 / 粘贴 / 点击」。</p>
+      <section class="lp-flow">
+        <ol>
+          <li>
+            <b>Step 1 · 定位</b>
+            输入背景与兴趣，AI 直接生成 3 个差异化人设方案与起号建议。
+          </li>
+          <li>
+            <b>Step 2 · 拆解</b>
+            上传爆款 MP4，ASR + DeepSeek 自动提取 Hook / 节奏 / CTA 骨架。
+          </li>
+          <li>
+            <b>Step 3 · 写稿</b>
+            引导式问答 3-7 轮，把骨架填成属于你人设的原创分镜脚本。
+          </li>
+          <li>
+            <b>Step 4 · 包装</b>
+            一键生成 5 标题 / 简介 / 标签矩阵，覆盖长尾搜索曝光。
+          </li>
+        </ol>
+      </section>
+
+      <h2 class="koc-sec-title">四大模块速览</h2>
+      <div class="lp-modules">
+        <article>
+          <h3>① AI 人设生成</h3>
+          <p>
+            把「职业 + 兴趣 + 资源」喂进去，AI 综合分析后直接生成
+            3 个差异化人设方案与起号建议。
+          </p>
+          <div class="lp-mod-foot">
+            <span class="koc-pill">第一步</span>
+            <a href="feature-2.html">看 demo →</a>
+          </div>
+        </article>
+        <article>
+          <h3>② 爆款逆向拆解 · 脚本引擎</h3>
+          <p>
+            用户上传 → ASR 模态降维 → DeepSeek 拆出 Hook / Body / CTA 三段骨架 →
+            引导问答生成属于你人设的原创脚本。
+          </p>
+          <div class="lp-mod-foot">
+            <span class="koc-pill">技术亮点</span>
+            <a href="feature-1.html">看 demo →</a>
+          </div>
+        </article>
+        <article>
+          <h3>③ 标题与标签车间 · 长尾 SEO</h3>
+          <p>
+            脚本一键转 5 个备选标题 / 视频简介 / 标签矩阵（泛流量 + 精准长尾），按平台差异化适配。
+          </p>
+          <div class="lp-mod-foot">
+            <span class="koc-pill">SEO</span>
+            <a href="feature-3.html">看 demo →</a>
+          </div>
+        </article>
+        <article>
+          <h3>④ 评论分拣 · 互动副驾</h3>
+          <p>
+            粘贴评论区文本，AI 过滤灌水、识别高价值评论，提供专业 / 幽默 / 共情三种语气回复草案。
+          </p>
+          <div class="lp-mod-foot">
+            <span class="koc-pill">互动</span>
+            <a href="feature-4.html">看 demo →</a>
+          </div>
+        </article>
+      </div>
+
+    </main>
+
+    <footer class="koc-footer">
+      KOCopilot · MVP 静态高保真 · 仅作演示，无后端 ·
+      <a href="docs/PRD.md">PRD</a>
+    </footer>
+  </body>
+</html>

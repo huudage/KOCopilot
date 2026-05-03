@@ -1,0 +1,28 @@
+# Runtime
+.server.pid
+logs/
+
+# Secrets — NEVER commit these
+.env
+server/.env
+server/.env.local
+*.bak
+
+# Python
+server/venv/
+server/.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+htmlcov/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp

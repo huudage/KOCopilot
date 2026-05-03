@@ -1,0 +1,877 @@
+/* KOCopilot — 工作台 + 功能页布局
+ * 与 styles.css 配合使用，所有变量来自 styles.css 的 :root。
+ */
+
+/* ===== 工作台：Hero & 数据概览 ===== */
+.koc-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.6rem;
+}
+
+@media (max-width: 980px) {
+  .koc-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.koc-stat {
+  padding: 1.1rem 1.2rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  overflow: hidden;
+}
+
+.koc-stat::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary), var(--accent));
+  opacity: 0.6;
+}
+
+.koc-stat__k {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+
+.koc-stat__v {
+  margin: 0.4rem 0 0.25rem;
+  font-family: var(--font-display);
+  font-size: 1.85rem;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.koc-stat__meta {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+}
+
+/* ===== 工作台：核心入口（一主二次） ===== */
+.koc-entries {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.8rem;
+}
+
+@media (max-width: 980px) {
+  .koc-entries {
+    grid-template-columns: 1fr;
+  }
+}
+
+.koc-entry {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.4rem 1.5rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: var(--surface);
+  text-decoration: none;
+  color: var(--ink);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  min-height: 152px;
+}
+
+.koc-entry:hover {
+  text-decoration: none;
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--line-strong);
+}
+
+.koc-entry__title {
+  margin: 0;
+  font-size: 1.08rem;
+  font-weight: 700;
+}
+
+.koc-entry__p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--ink-muted);
+  line-height: 1.55;
+}
+
+.koc-entry__cta {
+  margin-top: auto;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.42rem 0.95rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: var(--primary-100);
+  color: var(--primary-700);
+}
+
+.koc-entry__cta::after {
+  content: "→";
+  font-weight: 400;
+}
+
+.koc-entry--primary {
+  background: linear-gradient(135deg, var(--primary) 0%, #6750f9 60%, #7a5ef9 100%);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 16px 40px rgba(79, 60, 247, 0.28);
+}
+
+.koc-entry--primary .koc-entry__p {
+  color: rgba(255, 255, 255, 0.86);
+}
+
+.koc-entry--primary .koc-entry__cta {
+  background: var(--accent);
+  color: #1a1632;
+}
+
+.koc-entry--primary:hover {
+  box-shadow: 0 22px 50px rgba(79, 60, 247, 0.36);
+  border-color: transparent;
+}
+
+.koc-entry__tag {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.96);
+  text-transform: uppercase;
+}
+
+.koc-entry:not(.koc-entry--primary) .koc-entry__tag {
+  background: var(--bg-deep);
+  color: var(--primary-700);
+}
+
+/* ===== 工作台：双看板 ===== */
+.koc-board-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 980px) {
+  .koc-board-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.koc-board {
+  padding: 1.2rem 1.3rem 1.4rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.koc-board h2 {
+  margin: 0 0 0.25rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.koc-board__sub {
+  margin: 0 0 1rem;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+}
+
+.koc-lanes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+}
+
+.koc-lane {
+  background: var(--bg-soft);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-sm);
+  padding: 0.8rem 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 168px;
+}
+
+.koc-lane h4 {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--primary-700);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.koc-card-sm {
+  padding: 0.55rem 0.7rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+}
+
+.koc-card-sm b {
+  font-size: 0.86rem;
+  color: var(--ink);
+}
+
+.koc-card-sm span {
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+/* 看板中的列表表格 */
+.koc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.koc-list li {
+  display: grid;
+  grid-template-columns: 1.1fr 0.8fr auto;
+  gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  align-items: center;
+  font-size: 0.84rem;
+}
+
+.koc-list li b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.koc-list li span {
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+
+.koc-pill {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  background: var(--primary-100);
+  color: var(--primary-700);
+}
+
+.koc-pill--warn {
+  background: #fff4d6;
+  color: #946b00;
+}
+
+.koc-pill--ok {
+  background: #def7ec;
+  color: #117c4f;
+}
+
+/* ===== 功能页：通用骨架 ===== */
+.koc-feature {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 1.4rem;
+  margin-top: 1.4rem;
+}
+
+@media (max-width: 980px) {
+  .koc-feature {
+    grid-template-columns: 1fr;
+  }
+}
+
+.koc-side {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem;
+  height: fit-content;
+  position: sticky;
+  top: 80px;
+}
+
+.koc-side h3 {
+  margin: 0 0 0.85rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.koc-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.koc-steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  font-size: 0.86rem;
+  color: var(--ink-muted);
+}
+
+.koc-steps li::before {
+  content: attr(data-step);
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--bg-deep);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--primary-700);
+}
+
+.koc-steps li[aria-current="step"] {
+  background: var(--primary-100);
+  color: var(--primary-700);
+  font-weight: 600;
+}
+
+.koc-steps li[aria-current="step"]::before {
+  background: var(--primary);
+  color: #fff;
+}
+
+.koc-steps li.is-done {
+  color: var(--ink);
+  opacity: 0.7;
+}
+
+.koc-steps li.is-done::before {
+  background: var(--success);
+  color: #fff;
+  content: "✓";
+}
+
+.koc-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.koc-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1.4rem 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.koc-panel__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+
+.koc-panel__head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.koc-panel__head p {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+}
+
+/* ===== 功能页 1：上传区 ===== */
+.koc-uploader {
+  border: 2px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+  padding: 2.4rem 1.5rem;
+  text-align: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.koc-uploader.is-drag {
+  background: var(--primary-100);
+  border-color: var(--primary);
+}
+
+.koc-uploader__icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 0.85rem;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff;
+  font-size: 1.5rem;
+  box-shadow: var(--shadow-md);
+}
+
+.koc-uploader__title {
+  margin: 0 0 0.4rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.koc-uploader__hint {
+  margin: 0 0 1rem;
+  font-size: 0.84rem;
+  color: var(--ink-muted);
+}
+
+/* 拆解结果骨架卡 */
+.koc-skeleton {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 1rem;
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+}
+
+.koc-skeleton__time {
+  display: grid;
+  place-items: center;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 10px;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+}
+
+.koc-skeleton__body h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.96rem;
+  color: var(--ink);
+}
+
+.koc-skeleton__body p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--ink-muted);
+  line-height: 1.55;
+}
+
+.koc-skeleton__body em {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-style: normal;
+  font-size: 0.75rem;
+  background: var(--accent);
+  color: #1a1632;
+  padding: 0.18rem 0.55rem;
+  border-radius: 4px;
+}
+
+/* 引导问答 */
+.koc-qa {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.koc-qa__bot {
+  align-self: flex-start;
+  max-width: 75%;
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: 14px 14px 14px 4px;
+  padding: 0.75rem 1rem;
+  font-size: 0.92rem;
+}
+
+.koc-qa__opts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.koc-qa__opt {
+  padding: 0.42rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  font-size: 0.84rem;
+  color: var(--ink);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.koc-qa__opt:hover {
+  background: var(--primary-100);
+  border-color: var(--primary);
+  color: var(--primary-700);
+}
+
+.koc-qa__opt.is-selected {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* ===== 功能页 3：标题/标签输出网格 ===== */
+.koc-output-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (max-width: 760px) {
+  .koc-output-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.koc-output-card {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.koc-output-card__type {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--primary-700);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.koc-output-card__text {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.koc-output-card__bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+}
+
+.koc-tag-cluster {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.koc-tag-cluster__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.koc-tag-cluster__row b {
+  flex-basis: 6rem;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+
+.koc-tag {
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  font-size: 0.78rem;
+  color: var(--primary-700);
+}
+
+.koc-tag--accent {
+  background: #fff8d8;
+  border-color: #f3e1a1;
+  color: #946b00;
+}
+
+/* ===== 功能页 4：评论分拣 ===== */
+.koc-comment-input {
+  width: 100%;
+  min-height: 130px;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: var(--bg-soft);
+  color: var(--ink);
+}
+
+.koc-comment-input:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.koc-bucket {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.koc-bucket > details {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 0.7rem 0.95rem;
+}
+
+.koc-bucket > details[open] {
+  background: var(--bg-soft);
+}
+
+.koc-bucket > details > summary {
+  cursor: pointer;
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: var(--ink);
+  list-style: none;
+}
+
+.koc-bucket > details > summary::before {
+  content: "▸ ";
+  color: var(--primary);
+  font-weight: 700;
+  margin-right: 0.3rem;
+}
+
+.koc-bucket > details[open] > summary::before {
+  content: "▾ ";
+}
+
+.koc-comment {
+  margin-top: 0.65rem;
+  padding: 0.7rem 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.koc-comment__meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: var(--ink-muted);
+  margin-bottom: 0.35rem;
+}
+
+.koc-comment__text {
+  margin: 0 0 0.6rem;
+  font-size: 0.88rem;
+  color: var(--ink);
+}
+
+.koc-replies {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@media (max-width: 760px) {
+  .koc-replies {
+    grid-template-columns: 1fr;
+  }
+}
+
+.koc-reply {
+  padding: 0.6rem 0.75rem;
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.koc-reply h5 {
+  margin: 0 0 0.3rem;
+  font-size: 0.74rem;
+  color: var(--primary-700);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.koc-reply p {
+  margin: 0 0 0.45rem;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.koc-reply button {
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.28rem 0.7rem;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  color: var(--primary-700);
+  cursor: pointer;
+}
+
+.koc-reply button:hover {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+
+/* ===== 功能页 2：人设罗盘输入 + 输出 ===== */
+.koc-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 760px) {
+  .koc-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.koc-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.koc-field label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.koc-field input,
+.koc-field textarea {
+  padding: 0.65rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-family: inherit;
+  font-size: 0.92rem;
+  color: var(--ink);
+}
+
+.koc-field input:focus,
+.koc-field textarea:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.koc-personas {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 980px) {
+  .koc-personas {
+    grid-template-columns: 1fr;
+  }
+}
+
+.koc-persona {
+  padding: 1.1rem 1.2rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.koc-persona h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--ink);
+}
+
+.koc-persona__why {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--ink-muted);
+  line-height: 1.55;
+}
+
+.koc-persona dl {
+  margin: 0.5rem 0 0;
+  display: grid;
+  grid-template-columns: 5.5rem 1fr;
+  row-gap: 0.3rem;
+  font-size: 0.78rem;
+}
+
+.koc-persona dt {
+  color: var(--ink-muted);
+  font-weight: 500;
+}
+
+.koc-persona dd {
+  margin: 0;
+  color: var(--ink);
+}
+
+/* ===== 通用：免责说明条 ===== */
+.koc-disclaimer {
+  margin-top: 1.2rem;
+  padding: 0.8rem 1.1rem;
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 0.82rem;
+  color: var(--ink-muted);
+}
+
+.koc-disclaimer b {
+  color: var(--primary-700);
+}

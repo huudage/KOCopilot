@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>工作台 — KOCopilot</title>
+    <meta
+      name="description"
+      content="爆款拆解、人设定向、标题包装、评论分拣 一站式 AI 副驾。Demo。"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="app-screens.css" />
+  </head>
+  <body>
+    <header class="koc-topbar" role="banner">
+      <div class="koc-topbar__inner">
+        <a class="koc-brand" href="index.html">KOCopilot</a>
+        <nav class="koc-nav" aria-label="主功能">
+          <a href="index.html" aria-current="page">工作台</a>
+          <a href="feature-1.html">爆款拆解</a>
+          <a href="feature-2.html">人设生成</a>
+          <a href="feature-3.html">标题车间</a>
+          <a href="feature-4.html">评论分拣</a>
+        </nav>
+        <div class="koc-nav koc-nav--muted">
+          <a href="landing.html">产品说明</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main" aria-label="工作台">
+      <header class="koc-hero">
+        <span class="koc-badge">Demo · 静态高保真</span>
+        <h1>让一个人，干出一个 <em>MCN 团队</em>的产出。</h1>
+        <p class="koc-lead">
+          上传爆款 → AI 拆解骨架 → 引导原创脚本 → 一键生成元数据 → 评论区智能回复。以下为静态演示，所有数据均为示例。
+        </p>
+      </header>
+
+      <section class="koc-stat-grid" aria-label="数据概览">
+        <div class="koc-stat">
+          <p class="koc-stat__k">本周拆解任务</p>
+          <p class="koc-stat__v">8</p>
+          <p class="koc-stat__meta">较上周 +3 · 含 2 条草稿</p>
+        </div>
+        <div class="koc-stat">
+          <p class="koc-stat__k">已生成脚本</p>
+          <p class="koc-stat__v">5</p>
+          <p class="koc-stat__meta">本月已发 3 · 待发 2</p>
+        </div>
+        <div class="koc-stat">
+          <p class="koc-stat__k">待回复评论</p>
+          <p class="koc-stat__v">17</p>
+          <p class="koc-stat__meta">高价值 4 · 中价值 13</p>
+        </div>
+        <div class="koc-stat">
+          <p class="koc-stat__k">累计节省工时</p>
+          <p class="koc-stat__v">26h</p>
+          <p class="koc-stat__meta">较人工平均节省 73%</p>
+        </div>
+      </section>
+
+      <h2 class="koc-sec-title">核心功能</h2>
+      <p class="koc-sec-sub">从爆款分析到发布运营，端到端一站式工作流。</p>
+
+      <div class="koc-entries" role="list">
+        <a class="koc-entry koc-entry--primary" href="feature-2.html" role="listitem">
+          <span class="koc-entry__tag">第一步</span>
+          <h3 class="koc-entry__title">AI 人设生成</h3>
+          <p class="koc-entry__p">
+            输入背景、兴趣与可用资源，AI 直接生成 3 个差异化人设方案与起号建议——开始任何创作前的第一步。
+          </p>
+          <span class="koc-entry__cta">开始生成</span>
+        </a>
+        <a class="koc-entry" href="feature-1.html" role="listitem">
+          <span class="koc-entry__tag">爆款拆解</span>
+          <h3 class="koc-entry__title">爆款逆向拆解 + 脚本引擎</h3>
+          <p class="koc-entry__p">
+            上传对标爆款视频，AI 自动提取 Hook / 节奏 / CTA 骨架，再用引导式问答生成属于你人设的原创分镜脚本。
+          </p>
+          <span class="koc-entry__cta">开始拆解</span>
+        </a>
+        <a class="koc-entry" href="feature-4.html" role="listitem">
+          <span class="koc-entry__tag">互动运营</span>
+          <h3 class="koc-entry__title">评论分拣与互动副驾</h3>
+          <p class="koc-entry__p">
+            粘贴评论区文本，AI 过滤灌水、识别高价值提问，并提供专业 / 幽默 / 共情三种语气回复草案。
+          </p>
+          <span class="koc-entry__cta">开始分拣</span>
+        </a>
+      </div>
+
+      <div class="koc-board-row" aria-label="看板区">
+        <section class="koc-board" aria-labelledby="board-tasks">
+          <h2 id="board-tasks">近期创作任务</h2>
+          <p class="koc-board__sub">来自拆解 / 脚本 / 发布的待办（示意）。</p>
+          <div class="koc-lanes">
+            <div class="koc-lane">
+              <h4>本周拆解</h4>
+              <div class="koc-card-sm">
+                <b>「冰箱整理」对标视频</b>
+                <span>已完成 · 等待生成脚本</span>
+              </div>
+              <div class="koc-card-sm">
+                <b>「打工人午餐」对标</b>
+                <span>处理中 · 还剩 32s</span>
+              </div>
+            </div>
+            <div class="koc-lane">
+              <h4>待润色脚本</h4>
+              <div class="koc-card-sm">
+                <b>《冬日囤菜清单》</b>
+                <span>引导问答 4/5 已完成</span>
+              </div>
+              <div class="koc-card-sm">
+                <b>《通勤包里有什么》</b>
+                <span>待标题包装</span>
+              </div>
+            </div>
+            <div class="koc-lane">
+              <h4>待发布</h4>
+              <div class="koc-card-sm">
+                <b>《周末省心晚餐》</b>
+                <span>抖音 + 小红书</span>
+              </div>
+              <div class="koc-card-sm">
+                <b>《8K 也能精致冰箱》</b>
+                <span>建议明早 8:30 发</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="koc-board" aria-labelledby="board-personas">
+          <h2 id="board-personas">我的人设方案</h2>
+          <p class="koc-board__sub">由模块二生成的差异化定位备选。</p>
+          <ul class="koc-list">
+            <li>
+              <b>打工人精致冰箱整理</b>
+              <span>收纳 × 预算 × 通勤</span>
+              <span class="koc-pill koc-pill--ok">采用中</span>
+            </li>
+            <li>
+              <b>3 块钱也好喝的咖啡馆</b>
+              <span>精致生活 × 平价</span>
+              <span class="koc-pill">备选</span>
+            </li>
+            <li>
+              <b>租房改造低预算图鉴</b>
+              <span>家居 × 改造</span>
+              <span class="koc-pill">备选</span>
+            </li>
+            <li>
+              <b>带饭打卡 100 天</b>
+              <span>美食 × 长期主义</span>
+              <span class="koc-pill koc-pill--warn">未启用</span>
+            </li>
+          </ul>
+        </section>
+      </div>
+    </main>
+
+    <footer class="koc-footer">
+      KOCopilot · MVP 静态高保真 · 仅作演示，无后端 ·
+      <a href="landing.html">产品说明</a>
+    </footer>
+  </body>
+</html>
