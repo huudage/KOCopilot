@@ -146,18 +146,24 @@ if (-not $diff) {
 }
 
 # ---- Step 6: ensure origin points to RepoUrl ----
+# Use `git remote` (lists names, never errors on missing origin) instead of
+# `git remote get-url origin` (writes to stderr → trips $ErrorActionPreference=Stop
+# even with `2>$null`, which is a well-known PS5.1 / NativeCommandError gotcha).
 Step "6/8" "git remote origin -> $RepoUrl"
-$existing = (& git remote get-url origin) 2>$null
-if ($existing) {
+$remotes = @(& git remote)
+if ($remotes -contains "origin") {
+  $existing = (& git remote get-url origin).Trim()
   if ($existing -ne $RepoUrl) {
     Warn "remote origin currently = $existing"
     & git remote set-url origin $RepoUrl
+    if ($LASTEXITCODE -ne 0) { Die "git remote set-url failed (exit $LASTEXITCODE)" }
     OK "origin updated to $RepoUrl"
   } else {
     OK "origin already set"
   }
 } else {
   & git remote add origin $RepoUrl
+  if ($LASTEXITCODE -ne 0) { Die "git remote add failed (exit $LASTEXITCODE)" }
   OK "origin added"
 }
 
