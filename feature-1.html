@@ -44,9 +44,9 @@
         <aside class="koc-side" aria-label="工作流">
           <h3>工作流</h3>
           <ul class="koc-steps">
-            <li class="is-done" data-step="0"><a href="feature-2.html" style="color:inherit; text-decoration:none;">人设生成</a></li>
-            <li class="is-done" data-step="1">输入对标内容</li>
-            <li aria-current="step" data-step="2">AI 拆解骨架</li>
+            <li aria-current="step" data-step="0">选择人设</li>
+            <li data-step="1">输入对标内容</li>
+            <li data-step="2">AI 拆解骨架</li>
             <li data-step="3">引导式问答</li>
             <li data-step="4">生成原创脚本</li>
             <li data-step="5"><a href="feature-3.html" style="color:inherit; text-decoration:none;">导出 / 进入标题车间</a></li>
@@ -54,6 +54,47 @@
         </aside>
 
         <section class="koc-stage">
+
+          <!-- 第 0 步：选择本次拆解使用的人设。
+               设计原因：以前 QA / Script 直接在 localStorage 里取「最新一条」人设记录的第一个方案，
+               用户没有选择权——一旦保存了多个人设就会拿错语气；此处显式让用户在每次拆解前确认。
+               人设由 KOCActivePersona 控制器（interactions.js）持久化到 sessionStorage，
+               同一会话内多次拆解保持同一人设；切换标签页/刷新会重置（避免老数据残留）。 -->
+          <article class="koc-panel" aria-labelledby="step-persona" data-koc-persona-step>
+            <div class="koc-panel__head">
+              <div>
+                <h2 id="step-persona">第 0 步 · 选择本次拆解使用的人设</h2>
+                <p>第 3 步引导式问答与第 4 步脚本生成都会贴合这个人设的语气、差异化与受众。</p>
+              </div>
+              <button
+                class="btn btn-ghost sm"
+                type="button"
+                data-koc-action="persona-chooser-open"
+              >选择 / 切换 →</button>
+            </div>
+
+            <!-- 状态切换由 KOCActivePersona 渲染：
+                 - 无人设记录 → 显示 [data-koc-persona-empty]（CTA 跳人设生成页）
+                 - 已选定    → 显示 [data-koc-persona-active]（人设摘要） -->
+            <div class="koc-active-persona" data-koc-persona-card>
+              <div class="koc-active-persona__empty" data-koc-persona-empty>
+                <div class="koc-active-persona__icon">🎭</div>
+                <h4>你还没有可选的人设</h4>
+                <p>先去「人设生成」保存至少一个方案，本页再回来选。</p>
+                <a class="btn btn-primary sm" href="feature-2.html">去生成人设 →</a>
+              </div>
+              <div class="koc-active-persona__active" data-koc-persona-active hidden>
+                <div class="koc-active-persona__head">
+                  <span class="koc-pill" data-koc-persona-name>—</span>
+                  <span class="koc-active-persona__score" data-koc-persona-score aria-label="推荐星级"></span>
+                  <span class="koc-active-persona__meta" data-koc-persona-meta></span>
+                </div>
+                <p class="koc-active-persona__diff" data-koc-persona-diff></p>
+                <p class="koc-active-persona__rationale" data-koc-persona-rationale></p>
+              </div>
+            </div>
+          </article>
+
           <article class="koc-panel" aria-labelledby="step-upload">
             <div class="koc-panel__head">
               <div>
@@ -255,6 +296,26 @@
         </section>
       </div>
     </main>
+
+    <!-- 人设选择弹窗（第 0 步的「选择 / 切换 →」按钮触发）。
+         - 列表数据来源：window.KOCHistory.listPersonas() 中所有记录的 personas[] 平铺
+         - 选中方案后写入 sessionStorage["koc.activePersona"]，并触发 KOCActivePersona.render() -->
+    <div class="koc-modal" data-koc-persona-modal hidden role="dialog" aria-modal="true" aria-labelledby="persona-modal-title">
+      <div class="koc-modal__backdrop" data-koc-action="persona-chooser-close"></div>
+      <div class="koc-modal__panel">
+        <header class="koc-modal__head">
+          <h3 id="persona-modal-title">选择本次拆解使用的人设</h3>
+          <button class="koc-modal__close" type="button" data-koc-action="persona-chooser-close" aria-label="关闭">×</button>
+        </header>
+        <div class="koc-modal__body" data-koc-persona-list>
+          <!-- 由 KOCActivePersona.openModal() 渲染 -->
+        </div>
+        <footer class="koc-modal__foot">
+          <span style="font-size: 0.82rem; color: var(--ink-mid);">没有合适的方案？</span>
+          <a class="btn btn-ghost sm" href="feature-2.html">去生成新人设 →</a>
+        </footer>
+      </div>
+    </div>
 
     <footer class="koc-footer">
       KOCopilot · 创作者智能副驾 · <a href="index.html">产品说明</a>

@@ -819,6 +819,218 @@
   border-left: 2px solid var(--primary);
 }
 
+/* ===== 功能页 1 第 0 步：当前激活人设卡片 + 选择 modal ===== */
+.koc-active-persona {
+  display: block;
+}
+
+.koc-active-persona__empty {
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  padding: 1.4rem 1.2rem;
+  text-align: center;
+  background: var(--bg-deep);
+}
+
+.koc-active-persona__icon {
+  font-size: 1.8rem;
+  margin-bottom: 0.4rem;
+}
+
+.koc-active-persona__empty h4 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.koc-active-persona__empty p {
+  margin: 0 0 0.8rem;
+  font-size: 0.85rem;
+  line-height: 1.65;
+  color: var(--ink-mid);
+}
+
+.koc-active-persona__active {
+  border: 1px solid var(--primary);
+  border-radius: 12px;
+  padding: 0.95rem 1.1rem;
+  background: var(--primary-100);
+}
+
+.koc-active-persona__head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.koc-active-persona__score {
+  color: #f5a623;
+  letter-spacing: 1px;
+  font-size: 0.9rem;
+}
+
+.koc-active-persona__meta {
+  font-size: 0.78rem;
+  color: var(--ink-mid);
+  margin-left: auto;
+}
+
+.koc-active-persona__diff,
+.koc-active-persona__rationale {
+  margin: 0.25rem 0 0;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.koc-active-persona__rationale {
+  color: var(--ink-mid);
+}
+
+/* ===== Modal: 通用浮层（首个使用方是第 0 步人设选择器） ===== */
+.koc-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.koc-modal[hidden] {
+  display: none !important;
+}
+
+.koc-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 18, 26, 0.55);
+  backdrop-filter: blur(2px);
+}
+
+.koc-modal__panel {
+  position: relative;
+  z-index: 1;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  max-width: 640px;
+  width: 100%;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+}
+
+.koc-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.2rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.koc-modal__head h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
+.koc-modal__close {
+  background: transparent;
+  border: 0;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--ink-mid);
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+}
+
+.koc-modal__close:hover {
+  background: var(--bg-deep);
+  color: var(--ink);
+}
+
+.koc-modal__body {
+  padding: 1rem 1.2rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.koc-modal__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.2rem;
+  border-top: 1px solid var(--line);
+  gap: 0.5rem;
+}
+
+/* === 单个人设方案卡片（modal 内） === */
+.koc-persona-option {
+  text-align: left;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-deep);
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.koc-persona-option:hover {
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
+.koc-persona-option.is-selected {
+  border-color: var(--primary);
+  background: var(--primary-100);
+  box-shadow: 0 0 0 2px var(--primary) inset;
+}
+
+.koc-persona-option__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.koc-persona-option__head b {
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+
+.koc-persona-option__score {
+  color: #f5a623;
+  letter-spacing: 1px;
+  font-size: 0.82rem;
+}
+
+.koc-persona-option__diff {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--ink);
+  line-height: 1.55;
+}
+
+.koc-persona-option__rationale,
+.koc-persona-option__refs {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ink-mid);
+  line-height: 1.55;
+}
+
 /* ===== 功能页 3：标题/标签输出网格 ===== */
 .koc-output-grid {
   display: grid;

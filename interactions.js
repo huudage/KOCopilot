@@ -50,6 +50,234 @@
   }
 
   // ============================================================================
+  // Step 0 controller — Active Persona selector (feature-1.html only)
+  //
+  // 设计原因：
+  //   爆款拆解 (feature-1) 的第 3、4 步严重依赖人设语气；早期版本默默取
+  //   localStorage 里"最新一条" persona 记录的第一个方案，导致用户保存了多个
+  //   人设之后被静默拿错。现在所有调用方（skeleton extract / qa next /
+  //   script generate）都通过 KOCActivePersona.getHint() 拿到用户在第 0 步
+  //   显式选中的方案，无选则传 null。
+  //
+  // 持久化：
+  //   sessionStorage（同一会话内多次拆解保持一致；关 tab 即重置，避免老数据残留）。
+  //   存的是「人设记录 id + 方案 idx + 关键字段冗余」三件套——不依赖 record 还在
+  //   localStorage 里（用户清空历史后仍能用）。
+  // ============================================================================
+  const KOCActivePersona = (function () {
+    const SS_KEY = "koc.activePersona";
+    let cache = null; // { recordId, personaIdx, name, differentiation, rationale, score }
+
+    function load() {
+      if (cache) return cache;
+      try {
+        const raw = sessionStorage.getItem(SS_KEY);
+        if (raw) cache = JSON.parse(raw);
+      } catch (_) { cache = null; }
+      return cache;
+    }
+
+    function save(payload) {
+      cache = payload;
+      try {
+        sessionStorage.setItem(SS_KEY, JSON.stringify(payload));
+      } catch (_) { /* 隐私模式下 sessionStorage 可能写不进 —— 内存仍生效 */ }
+    }
+
+    function clear() {
+      cache = null;
+      try { sessionStorage.removeItem(SS_KEY); } catch (_) {}
+    }
+
+    /** 把已选人设转成给后端 prompt 用的纯文本上下文。 */
+    function getHint() {
+      const p = load();
+      if (!p) return "";
+      return [p.name, p.differentiation, p.rationale]
+        .filter(Boolean)
+        .join(" · ");
+    }
+
+    /** 把所有已保存的 persona 记录平铺成 [{ recordId, personaIdx, persona, createdAt, inputs }, ...]
+        最新的记录在前；同一记录内按 score 降序，便于 modal 优先展示推荐度高的方案。 */
+    function listAll() {
+      try {
+        const records = (window.KOCHistory && window.KOCHistory.listPersonas()) || [];
+        const flat = [];
+        records.forEach((rec) => {
+          (rec.personas || []).forEach((persona, idx) => {
+            flat.push({
+              recordId: rec.id,
+              personaIdx: idx,
+              persona: persona,
+              createdAt: rec.createdAt,
+              inputs: rec.inputs || {},
+            });
+          });
+        });
+        return flat;
+      } catch (_) { return []; }
+    }
+
+    function fmtScore(n) {
+      const stars = Math.max(0, Math.min(5, parseInt(n, 10) || 0));
+      return "★".repeat(stars) + "☆".repeat(5 - stars);
+    }
+
+    function renderCard() {
+      const card = document.querySelector("[data-koc-persona-card]");
+      if (!card) return; // not on feature-1
+      const emptyEl = card.querySelector("[data-koc-persona-empty]");
+      const activeEl = card.querySelector("[data-koc-persona-active]");
+      const openBtn = document.querySelector('[data-koc-action="persona-chooser-open"]');
+      const all = listAll();
+      const selected = load();
+
+      if (all.length === 0) {
+        // 没保存过任何人设 → empty CTA + 禁用「选择 / 切换」
+        if (emptyEl) emptyEl.hidden = false;
+        if (activeEl) activeEl.hidden = true;
+        if (openBtn) openBtn.disabled = true;
+        return;
+      }
+      if (openBtn) openBtn.disabled = false;
+
+      if (!selected) {
+        // 有可选但未选定 → 仍显示空状态，但 CTA 改成"现在去选"
+        if (emptyEl) {
+          emptyEl.hidden = false;
+          emptyEl.querySelector("h4").textContent = "请先选择一个人设方案";
+          emptyEl.querySelector("p").textContent =
+            "你已保存 " + all.length + " 个方案，点击右上角「选择 / 切换」挑一个用本次拆解。";
+          const cta = emptyEl.querySelector("a.btn");
+          if (cta) {
+            cta.textContent = "选择人设 →";
+            cta.href = "javascript:void(0)";
+            cta.onclick = openModal;
+          }
+        }
+        if (activeEl) activeEl.hidden = true;
+        return;
+      }
+
+      // 已选定 → 渲染摘要卡
+      if (emptyEl) emptyEl.hidden = true;
+      if (activeEl) {
+        activeEl.hidden = false;
+        const nameEl = activeEl.querySelector("[data-koc-persona-name]");
+        const scoreEl = activeEl.querySelector("[data-koc-persona-score]");
+        const metaEl = activeEl.querySelector("[data-koc-persona-meta]");
+        const diffEl = activeEl.querySelector("[data-koc-persona-diff]");
+        const ratEl = activeEl.querySelector("[data-koc-persona-rationale]");
+        if (nameEl) nameEl.textContent = selected.name || "（未命名）";
+        if (scoreEl) scoreEl.textContent = fmtScore(selected.score);
+        if (metaEl) {
+          // 把 persona 来源记录的 background / interests 简短展示，让用户记起这是哪批生成的
+          const bg = (selected.inputs && (selected.inputs.background || selected.inputs.interests)) || "";
+          metaEl.textContent = bg ? "来源 · " + bg.slice(0, 60) : "";
+        }
+        if (diffEl) diffEl.textContent = selected.differentiation
+          ? "差异化 · " + selected.differentiation
+          : "";
+        if (ratEl) ratEl.textContent = selected.rationale
+          ? "为何值得做 · " + selected.rationale
+          : "";
+      }
+    }
+
+    function openModal() {
+      const modal = document.querySelector("[data-koc-persona-modal]");
+      const listEl = document.querySelector("[data-koc-persona-list]");
+      if (!modal || !listEl) return;
+      const all = listAll();
+      if (all.length === 0) {
+        listEl.innerHTML =
+          '<div class="koc-active-persona__empty">' +
+          '<div class="koc-active-persona__icon">🎭</div>' +
+          "<h4>还没有任何人设方案</h4>" +
+          "<p>请先去人设生成页保存至少一个。</p>" +
+          "</div>";
+      } else {
+        const selected = load();
+        listEl.innerHTML = all
+          .map((entry, i) => {
+            const p = entry.persona || {};
+            const isSel = selected
+              && selected.recordId === entry.recordId
+              && selected.personaIdx === entry.personaIdx;
+            const refs = (p.reference_accounts || []).slice(0, 3).join(" / ");
+            return (
+              '<button type="button" class="koc-persona-option' +
+                (isSel ? " is-selected" : "") +
+                '" data-persona-flat-idx="' + i + '">' +
+                '<div class="koc-persona-option__head">' +
+                  '<b>' + escapeHtml(p.name || "未命名") + "</b>" +
+                  '<span class="koc-persona-option__score">' + fmtScore(p.score) + "</span>" +
+                "</div>" +
+                '<p class="koc-persona-option__diff">' + escapeHtml(p.differentiation || "—") + "</p>" +
+                (p.rationale
+                  ? '<p class="koc-persona-option__rationale">为何值得做：' +
+                      escapeHtml(p.rationale) + "</p>"
+                  : "") +
+                (refs
+                  ? '<p class="koc-persona-option__refs">对标 · ' + escapeHtml(refs) + "</p>"
+                  : "") +
+              "</button>"
+            );
+          })
+          .join("");
+        listEl.querySelectorAll("[data-persona-flat-idx]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const idx = parseInt(btn.dataset.personaFlatIdx, 10);
+            const entry = all[idx];
+            if (!entry) return;
+            save({
+              recordId: entry.recordId,
+              personaIdx: entry.personaIdx,
+              name: entry.persona.name || "",
+              differentiation: entry.persona.differentiation || "",
+              rationale: entry.persona.rationale || "",
+              score: entry.persona.score || 0,
+              inputs: entry.inputs || {},
+            });
+            closeModal();
+            renderCard();
+            KOCApi.showToast("已选定人设：" + (entry.persona.name || "未命名"), "success");
+          });
+        });
+      }
+      modal.hidden = false;
+      // 锁页面滚动，避免 modal 背后还能滚走
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeModal() {
+      const modal = document.querySelector("[data-koc-persona-modal]");
+      if (modal) modal.hidden = true;
+      document.body.style.overflow = "";
+    }
+
+    function bind() {
+      // 仅在 feature-1（含 [data-koc-persona-card]）页面生效，其他页面静默退出
+      if (!document.querySelector("[data-koc-persona-card]")) return;
+      document.querySelectorAll('[data-koc-action="persona-chooser-open"]').forEach((el) => {
+        el.addEventListener("click", openModal);
+      });
+      document.querySelectorAll('[data-koc-action="persona-chooser-close"]').forEach((el) => {
+        el.addEventListener("click", closeModal);
+      });
+      // ESC 关闭 modal
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") closeModal();
+      });
+      renderCard();
+    }
+
+    return { bind: bind, getHint: getHint, render: renderCard, clear: clear };
+  })();
+  window.KOCActivePersona = KOCActivePersona;
+
+  // ============================================================================
   // Module 5+6 — Guided Q&A flow + Final script generation
   //
   // State machine:
@@ -76,22 +304,13 @@
 
     function $(sel) { return document.querySelector(sel); }
 
-    function getPersonaHintFromHistory() {
-      // 取最新一次保存的人设方案的 name + differentiation 作为 persona_hint，
-      // 让 QA 与 Script 的 prompt 拥有人设上下文（提升输出贴合度）。
-      try {
-        const list = (window.KOCHistory && window.KOCHistory.listPersonas()) || [];
-        const latest = list[0];
-        if (!latest || !latest.personas || !latest.personas.length) return "";
-        const p = latest.personas[0];
-        return [p.name, p.differentiation].filter(Boolean).join(" · ");
-      } catch (_) { return ""; }
-    }
-
     function activate(skeleton, transcript) {
       state.skeleton = skeleton;
       state.transcript = transcript || "";
-      state.personaHint = getPersonaHintFromHistory();
+      // 单一来源：用户在第 0 步明确选定的人设；没选就传空字符串。
+      // 早期版本曾"自动取最新一条人设记录的第一个方案"，导致用户保存多个人设后被静默拿错；
+      // 现在所有 persona 上下文都必须经过用户在第 0 步显式确认。
+      state.personaHint = (window.KOCActivePersona && window.KOCActivePersona.getHint()) || "";
       state.answers = [];
       state.latest = null;
 
@@ -513,7 +732,11 @@
       }
 
       try {
-        const resp = await KOCApi.postJSON("/api/skeleton/extract", { transcript: transcript });
+        const personaHint = (window.KOCActivePersona && window.KOCActivePersona.getHint()) || null;
+        const resp = await KOCApi.postJSON("/api/skeleton/extract", {
+          transcript: transcript,
+          persona_hint: personaHint,
+        });
         renderSkeleton(skeletonPanel, placeholder, resp);
         if (window.KOCHistory && typeof window.KOCHistory.saveSkeleton === "function") {
           try { window.KOCHistory.saveSkeleton(resp, transcript); } catch (_) {}
@@ -612,12 +835,13 @@
         KOCApi.showToast("脚本至少 20 字。", "error");
         return;
       }
-      // Platform is fixed to douyin in this version (the picker UI was
-      // removed). The backend still accepts the field for forward-compat.
+      // 当前版本只支持单一平台（去掉了多平台 tab）。后端 SEORequest.platform 字段
+      // 名仍保留 "douyin" 这个 token 是历史 schema 兼容（旧前端发请求不会被 422
+      // 拦），但用户可见文案统一表述为「短视频平台」。
       const body = { script: script, platform: "douyin" };
 
       KOCApi.setLoading(generateBtn, true, "生成中…");
-      if (titlesContainer) setBusy(titlesContainer, "AI 正在按抖音算法生成标题…");
+      if (titlesContainer) setBusy(titlesContainer, "AI 正在按短视频平台算法生成标题…");
       try {
         const resp = await KOCApi.postJSON("/api/seo/titles", body);
         renderSeoTitles(titlesContainer, resp.titles || []);
@@ -850,6 +1074,10 @@
     bindCopyScript();
     bindUploader();
     bindInputTabs();
+
+    // Step 0 必须在 bindSkeletonForm 之前 bind —— 后者在拆解前会读
+    // KOCActivePersona.getHint() 把人设上下文塞进 /api/skeleton/extract 请求体。
+    KOCActivePersona.bind();
 
     bindPersonaForm();
     bindSkeletonForm();
