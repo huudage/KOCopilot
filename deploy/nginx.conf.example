@@ -38,13 +38,24 @@ server {
     index index.html;
 
     # COOP/COEP for ffmpeg.wasm. The FastAPI middleware also adds these, but nginx may
-    # serve some files (e.g. via try_files fallback) without going through FastAPI; we
-    # belt-and-braces here.
+    # serve static HTML directly (via try_files) without proxying to FastAPI, so we set
+    # them here too.
+    #
+    # CRITICAL nginx gotcha: `add_header` does NOT inherit from a parent block if the
+    # child block has any `add_header` of its own. So we MUST repeat these inside every
+    # location that also calls `add_header` (Cache-Control, Cache-Control immutable, …),
+    # otherwise the browser will see neither and ffmpeg.wasm refuses to load.
+    # Reference: https://nginx.org/en/docs/http/ngx_http_headers_module.html#add_header
     add_header Cross-Origin-Opener-Policy "same-origin" always;
     add_header Cross-Origin-Embedder-Policy "credentialless" always;
 
     location / {
         try_files $uri $uri/ /index.html;
+        # Repeated COOP/COEP — see nginx gotcha note above. Without these two lines the
+        # browser strips them when serving HTML and ffmpeg.wasm fails with
+        # "cross-origin isolation is not enabled".
+        add_header Cross-Origin-Opener-Policy "same-origin" always;
+        add_header Cross-Origin-Embedder-Policy "credentialless" always;
         add_header Cache-Control "public, max-age=300";
     }
 
@@ -52,6 +63,9 @@ server {
     location /assets/ {
         expires 30d;
         access_log off;
+        # Repeated COOP/COEP — see note above.
+        add_header Cross-Origin-Opener-Policy "same-origin" always;
+        add_header Cross-Origin-Embedder-Policy "credentialless" always;
         add_header Cache-Control "public, immutable";
     }
 

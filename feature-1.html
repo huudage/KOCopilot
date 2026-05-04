@@ -45,7 +45,7 @@
           <h3>工作流</h3>
           <ul class="koc-steps">
             <li class="is-done" data-step="0"><a href="feature-2.html" style="color:inherit; text-decoration:none;">人设生成</a></li>
-            <li class="is-done" data-step="1">上传 / 粘贴对标台词</li>
+            <li class="is-done" data-step="1">输入对标内容</li>
             <li aria-current="step" data-step="2">AI 拆解骨架</li>
             <li data-step="3">引导式问答</li>
             <li data-step="4">生成原创脚本</li>
@@ -57,25 +57,90 @@
           <article class="koc-panel" aria-labelledby="step-upload">
             <div class="koc-panel__head">
               <div>
-                <h2 id="step-upload">第 1 步 · 上传视频或粘贴台词</h2>
-                <p>选择视频后浏览器自动抽轨为音频 → 后端火山豆包 2.0 识别 → 自动填入下方文本框。</p>
+                <h2 id="step-upload">第 1 步 · 输入对标内容</h2>
+                <p>从下方两种方式中<b>任选一种</b>提供对标素材。</p>
               </div>
-              <span class="koc-pill" id="koc-asr-pill">豆包 ASR</span>
+              <span class="koc-pill" id="koc-asr-pill">豆包 ASR · DeepSeek</span>
             </div>
 
-            <div class="koc-uploader" id="uploader">
-              <div class="koc-uploader__icon">↓</div>
-              <p class="koc-uploader__title">点击选择 / 拖拽 视频或音频</p>
-              <p class="koc-uploader__hint">
-                支持 mp4 / mov / mp3 / m4a / wav；建议时长 ≤ 5 分钟，文件 ≤ 200 MB。
-              </p>
-              <input
-                id="koc-asr-file"
-                type="file"
-                accept="video/*,audio/*"
-                style="margin-top: 0.6rem;"
-              />
-              <div id="koc-asr-status" class="koc-asr-status" hidden></div>
+            <!-- 二选一 tab：上传视频 vs 粘贴台词 -->
+            <div class="koc-input-tabs" role="tablist" aria-label="输入方式">
+              <button
+                type="button"
+                role="tab"
+                class="koc-input-tab is-active"
+                data-input-tab="video"
+                aria-selected="true"
+                aria-controls="koc-input-video"
+              >
+                上传视频 / 音频
+                <span class="koc-input-tab__hint">浏览器抽轨 → ASR 自动转写</span>
+              </button>
+              <button
+                type="button"
+                role="tab"
+                class="koc-input-tab"
+                data-input-tab="text"
+                aria-selected="false"
+                aria-controls="koc-input-text"
+              >
+                粘贴台词文本
+                <span class="koc-input-tab__hint">手工抄录 / 字幕导出</span>
+              </button>
+            </div>
+
+            <!-- 路径 A：上传视频 / 音频 -->
+            <div
+              id="koc-input-video"
+              class="koc-input-pane is-active"
+              role="tabpanel"
+              data-input-pane="video"
+            >
+              <div class="koc-uploader" id="uploader">
+                <div class="koc-uploader__icon">↓</div>
+                <p class="koc-uploader__title">点击选择 / 拖拽 视频或音频</p>
+                <p class="koc-uploader__hint">
+                  支持 mp4 / mov / mp3 / m4a / wav；建议时长 ≤ 5 分钟，文件 ≤ 200 MB。
+                </p>
+                <input
+                  id="koc-asr-file"
+                  type="file"
+                  accept="video/*,audio/*"
+                  style="margin-top: 0.6rem;"
+                />
+                <div id="koc-asr-status" class="koc-asr-status" hidden></div>
+              </div>
+            </div>
+
+            <!-- 路径 B：粘贴文本 -->
+            <div
+              id="koc-input-text"
+              class="koc-input-pane"
+              role="tabpanel"
+              data-input-pane="text"
+              hidden
+            >
+              <label
+                for="koc-transcript-input"
+                style="display:block; font-size:0.85rem; color: var(--ink-muted); margin-bottom: 0.4rem;"
+              >
+                直接把视频台词粘贴到下方（含 / 不含时间戳均可），AI 会自动识别结构。
+              </label>
+              <textarea
+                id="koc-transcript-input"
+                data-koc-transcript
+                class="koc-comment-input"
+                rows="7"
+                placeholder="例如：[00:00] 90% 的人冰箱都用错了... [00:30] 三步法的第一步..."
+              ></textarea>
+              <div style="display:flex; gap:0.6rem; margin-top:0.6rem; flex-wrap: wrap; align-items:center;">
+                <button class="btn btn-primary" type="button" data-koc-action="extract-skeleton">
+                  用 AI 拆解骨架
+                </button>
+                <span style="font-size:0.78rem; color: var(--ink-muted);">
+                  · 文本长度 ≥ 20 字，建议 ≤ 5 分钟视频台词
+                </span>
+              </div>
             </div>
           </article>
 

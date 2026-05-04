@@ -419,6 +419,55 @@
   color: var(--ink-muted);
 }
 
+/* ===== 功能页 1：输入方式 tab（视频 vs 文本 二选一）===== */
+.koc-input-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  margin: 1rem 0 1rem;
+}
+
+.koc-input-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.05s ease;
+}
+
+.koc-input-tab:hover {
+  border-color: var(--line-strong);
+}
+
+.koc-input-tab:active {
+  transform: translateY(1px);
+}
+
+.koc-input-tab.is-active {
+  border-color: var(--brand);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 10%, var(--surface)), var(--surface));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
+}
+
+.koc-input-tab__hint {
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+}
+
+.koc-input-pane[hidden] {
+  display: none !important;
+}
+
 /* ===== 功能页 1：上传区 ===== */
 .koc-uploader {
   border: 2px dashed var(--line-strong);

@@ -511,12 +511,63 @@
   }
 
   // ============================================================================
+  // Input mode tabs (feature-1: 上传视频 vs 粘贴文本 — 二选一)
+  //
+  // Why a tab (not just collapsing both): users were confused by two parallel
+  // inputs visible at once and wondered which one was authoritative. Locking the
+  // UI into a binary choice (with the inactive pane fully hidden via [hidden])
+  // also lets us hide the ffmpeg.wasm uploader entirely on browsers that don't
+  // support cross-origin isolation — the user can fall back to text without
+  // seeing a broken upload button.
+  // ============================================================================
+  function bindInputTabs() {
+    const tabs = Array.from(document.querySelectorAll(".koc-input-tab[data-input-tab]"));
+    const panes = Array.from(document.querySelectorAll(".koc-input-pane[data-input-pane]"));
+    if (!tabs.length || !panes.length) return;
+
+    function activate(targetKey) {
+      tabs.forEach((tab) => {
+        const isActive = tab.dataset.inputTab === targetKey;
+        tab.classList.toggle("is-active", isActive);
+        tab.setAttribute("aria-selected", isActive ? "true" : "false");
+      });
+      panes.forEach((pane) => {
+        const isActive = pane.dataset.inputPane === targetKey;
+        pane.classList.toggle("is-active", isActive);
+        if (isActive) {
+          pane.removeAttribute("hidden");
+        } else {
+          pane.setAttribute("hidden", "");
+        }
+      });
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener("click", () => activate(tab.dataset.inputTab));
+    });
+
+    // If cross-origin isolation is unavailable, ffmpeg.wasm cannot decode video
+    // → silently default to the text-paste tab and hint the user.
+    // (We still keep the video tab clickable so power users with a direct mp3
+    //  can upload audio without ffmpeg.wasm — the uploader code paths handle
+    //  audio inputs without invoking ffmpeg.)
+    if (typeof window !== "undefined" && window.crossOriginIsolated === false) {
+      const videoTab = tabs.find((t) => t.dataset.inputTab === "video");
+      if (videoTab) {
+        videoTab.title =
+          "当前页面未启用 cross-origin isolation：mp4/mov 视频抽轨会失败，建议直接上传 mp3/m4a/wav 或切到右侧『粘贴台词文本』。";
+      }
+    }
+  }
+
+  // ============================================================================
   // Boot
   // ============================================================================
   document.addEventListener("DOMContentLoaded", () => {
     bindCopyButtons();
     bindQAOptions();
     bindUploader();
+    bindInputTabs();
 
     bindPersonaForm();
     bindSkeletonForm();
