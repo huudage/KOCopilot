@@ -444,12 +444,15 @@ bash scripts/deploy.sh
 
 ## 8. 后续路线
 
-| 阶段 | 目标 |
-|---|---|
-| **v0.1（当前）** | 4 模块端到端 + DeepSeek + mock 双模式 + 单台部署对齐慢病项目 |
-| v0.2 | ASR 真接入（阿里 Paraformer 异步轮询）+ 流式 SSE typewriter 效果 |
-| v0.3 | 模块二案例向量库（Qdrant 或 pgvector）+ RAG |
-| v0.4 | 用户系统、每日配额、付费节点 |
+| 阶段 | 状态 | 目标 |
+|---|---|---|
+| v0.1 | ✅ 已交付 | 4 模块端到端 + DeepSeek + mock 双模式 + 单台部署对齐慢病项目 |
+| v0.2-v0.4 | ✅ 已并入 | ASR 真接入：纯前端 ffmpeg.wasm + 火山豆包 |
+| v0.5 | ✅ 已交付 | 迁移到豆包极速版，删除磁盘临时文件 + 公网 URL 依赖 |
+| **v0.6（当前）** | ✅ 已交付 | 首页改产品说明 / 工作台拆出 / localStorage 历史看板 / 标题车间锁定抖音 / 全站去 Demo 表述 |
+| v0.7 | ⏳ 待办 | 流式 SSE typewriter 效果 + slowapi IP 限频 |
+| v0.8 | ⏳ 待办 | 模块二案例向量库（Qdrant 或 pgvector）+ RAG |
+| v0.9 | ⏳ 待办 | 用户系统、每日配额、付费节点 |
 
 ---
 
@@ -503,3 +506,218 @@ bash scripts/deploy.sh
 - ✅ 35 个 pytest 全过（mock 路径 100% 覆盖）
 - ⏳ **待用户做的 5 件事**：① 阿里云加 DNS A 记录 ② 火山开通**极速版**资源（资源 ID `volc.bigasr.auc_turbo`） ③ rsync 代码上服务器 ④ root 跑 install ⑤ certbot
 - ⏳ **v0.6 计划**：① OSS 直传支持 100MB 上限的更长视频 ② 流式 SSE typewriter ③ slowapi IP 限频 ④ Sentry 错误监控
+
+### 2026-05-04 第六次交付（产品形态调整 + 运维卡片）
+- ✅ **首页 = 产品说明**：旧 `landing.html` 升格为 `index.html`，原工作台迁到 `workspace.html`；删除"爆款拆解"作为独立卖点的卡片（保留为工作台流程内的实现手段）；hero + 底部紫色 CTA 双重「进入工作台」
+- ✅ **工作台历史看板**：新增 `koc-history.js` 模块（SRP），把"我的人设方案"和"我的拆解项目"以 localStorage 持久化（30 条上限）；KPI 卡也读 LS 实时算
+- ✅ **标题车间锁定抖音**：前端删除 4 个平台 tab；`SEORequest.platform` 收紧为 `Literal["douyin"]`；prompt 重写为单平台抖音规则（钩子前置/标签密度/emoji 控制）；新增 2 个反向测试，37 通过
+- ✅ **导航顺序统一**：人设生成放在爆款拆解前；feature-1 工作流条加 Step 0 = 人设生成
+- ✅ **全站去 Demo 表述**：5 HTML + interactions.js 清干净 v0.x / Demo / 静态高保真 / 演示模式 等所有"未上线"暗示
+- ✅ **push 脚本加防护**：`scripts/push-to-github.ps1` 加项目根目录守卫；`.cmd` 包装层加 `pushd "%~dp0.."` 自动切目录（修复了之前从父目录跑误伤无关 git 仓库的真实事故）
+- ✅ **README 加第 11 章**：日常自助运维 cheat sheet，覆盖开发→push→部署→重启→看日志→排错→换 Key 全链路
+
+---
+
+## 11. 日常自助运维 Cheat Sheet（你独自跑全流程）
+
+> 这一章是为了让你**完全脱离我**也能维护这个项目而写的。每个场景都给可复制粘贴的命令，按顺序抄就行。
+
+### 11.1 开发流程：从改代码到上线的完整一圈
+
+```
+1. 改代码（VS Code / Cursor 任意编辑器）
+       ↓
+2. 本地起 uvicorn 自测              [.\run.ps1]
+       ↓
+3. 跑测试，确认没破东西              [server\venv\Scripts\python.exe -m pytest server/tests -q]
+       ↓
+4. 提交到 git                       [git add . ; git commit -m "..."]
+       ↓
+5. push 到 GitHub                   [.\scripts\push-to-github.cmd <repo-url> ...]
+       ↓
+6. SSH 上服务器跑 deploy.sh         [/opt/kocopilot/scripts/deploy.sh]
+       ↓
+7. 跑生产健康检查                    [/opt/kocopilot/scripts/health-check.sh]
+       ↓
+完工 ✓
+```
+
+### 11.2 常用命令一页打印（最重要）
+
+| 我想干什么 | 命令（在 `D:\nocode\koc-copilot\` 下跑） |
+|---|---|
+| **本地起服务** | `.\run.ps1`（首次会装依赖；后续加 `$env:SKIP_INSTALL=1` 加速） |
+| **本地停服务** | `.\stop.ps1` |
+| **本地跑全套测试** | `.\server\venv\Scripts\python.exe -m pytest server/tests -q` |
+| **看本地日志** | `Get-Content logs\uvicorn.log -Tail 50 -Wait` |
+| **提交并推到 GitHub** | `git add .` → `git commit -m "your message"` → `git push` |
+| **从 GitHub 拉最新代码** | `git pull` |
+| **SSH 上服务器** | `ssh root@47.239.58.145`（你自己的 SSH key） |
+| **服务器一键升级** | （在服务器上）`sudo /opt/kocopilot/scripts/deploy.sh` |
+| **服务器看实时日志** | `sudo journalctl -u kocopilot-server -f` |
+| **服务器重启服务** | `sudo systemctl restart kocopilot-server` |
+| **服务器看 nginx 日志** | `sudo tail -f /var/log/nginx/access.log` |
+| **生产健康检查** | （在服务器上）`bash /opt/kocopilot/scripts/health-check.sh https://kocopilot.zlhu.asia` |
+
+### 11.3 场景一：我改了代码想发布
+
+```powershell
+# ⚠️ 必须在项目根目录跑
+cd D:\nocode\koc-copilot
+
+# 1. 本地自测
+.\run.ps1
+# 浏览器打开 http://127.0.0.1:8090 / 检查
+.\stop.ps1
+
+# 2. 跑测试
+.\server\venv\Scripts\python.exe -m pytest server/tests -q
+
+# 3. 提交
+git status                    # 看改了哪些文件
+git diff                      # 看具体改了什么
+git add .                     # 添加全部改动
+git commit -m "feat: 简短描述这次改了什么"
+
+# 4. 推到 GitHub（首次设过身份后，以后直接 git push 即可）
+git push
+
+# 5. 部署到生产
+ssh root@47.239.58.145
+# 服务器上：
+sudo /opt/kocopilot/scripts/deploy.sh
+# 这个脚本会自动：备份当前版本 → git pull → pip install → 重启 → 健康检查 → 失败自动回滚
+exit
+```
+
+### 11.4 场景二：服务挂了，5 分钟应急
+
+按这个顺序排查：
+
+```bash
+ssh root@47.239.58.145
+
+# A. 服务进程在不在？
+sudo systemctl status kocopilot-server
+# 如果 inactive/failed → 直接重启：
+sudo systemctl restart kocopilot-server
+
+# B. 看错误日志（最新 100 行）
+sudo journalctl -u kocopilot-server -n 100 --no-pager
+
+# C. nginx 通不通？
+sudo systemctl status nginx
+sudo tail -50 /var/log/nginx/error.log
+
+# D. 端到端健康检查
+curl -fsSL https://kocopilot.zlhu.asia/api/health
+# 应该返回 {"status":"healthy",...}
+
+# E. 全量 e2e 检查（耗时 ~30 秒，会真调一次每个 AI）
+bash /opt/kocopilot/scripts/health-check.sh https://kocopilot.zlhu.asia
+```
+
+如果上面都没解决，**回滚**（deploy.sh 会备份每次发布）：
+
+```bash
+# 看历史备份
+ls -la /opt/kocopilot.backups/
+# 选最新一个稳定版本
+sudo /opt/kocopilot/scripts/deploy.sh --rollback /opt/kocopilot.backups/<时间戳>
+```
+
+### 11.5 场景三：换 / 撤销 API Key
+
+> **每隔 90 天换一次 Key 是好习惯**。Key 一旦不小心进过 git history，必须立刻撤销。
+
+**DeepSeek**：
+
+```bash
+# 1. 在 https://platform.deepseek.com/api_keys 点旧 key 旁的 Disable / Delete
+# 2. 在同页面新建一个 Key，复制（只能复制一次）
+# 3. 服务器上更新 .env
+ssh root@47.239.58.145
+sudo nano /opt/kocopilot/server/.env
+# 找到 DEEPSEEK_API_KEY=sk-xxx 一行，改成新 Key
+# Ctrl+O 保存，Ctrl+X 退出
+# 4. 重启服务（systemd 会重新读 .env）
+sudo systemctl restart kocopilot-server
+# 5. 验证
+curl -fsSL https://kocopilot.zlhu.asia/api/health
+```
+
+**火山豆包**：流程一样，控制台在 [https://console.volcengine.com/speech/app](https://console.volcengine.com/speech/app)，环境变量名是 `DOUBAO_API_KEY`。
+
+### 11.6 场景四：怎么开新功能分支
+
+```powershell
+cd D:\nocode\koc-copilot
+
+# 1. 从 main 拉一个新分支
+git checkout -b feat/my-new-feature
+
+# 2. 改代码、提交
+git add .
+git commit -m "feat: 新增 XXX"
+
+# 3. 推到 GitHub（第一次推某个新分支需要 -u）
+git push -u origin feat/my-new-feature
+
+# 4. 在 GitHub 网页发起 Pull Request 合到 main
+# 5. 合并后回到 main 拉最新
+git checkout main
+git pull
+# 6. 删掉本地的旧分支（远端的可以在 PR 合并时勾选自动删）
+git branch -d feat/my-new-feature
+```
+
+### 11.7 场景五：突然想撤回上一次 commit
+
+```powershell
+# 我刚 commit 了但还没 push —— 撤回保留改动
+git reset --soft HEAD~1
+
+# 我刚 commit 了但还没 push —— 撤回并丢掉改动（小心！）
+git reset --hard HEAD~1
+
+# 我已经 push 了，需要"反向"再 commit 一次撤销
+git revert HEAD
+git push
+```
+
+### 11.8 场景六：本地 .env 配置忘了
+
+`.env` **不在 git 里**（被 `.gitignore` 排除）。如果丢了：
+
+```powershell
+cd D:\nocode\koc-copilot
+Copy-Item server\.env.example server\.env
+notepad server\.env
+# 填入 DEEPSEEK_API_KEY 和 DOUBAO_API_KEY
+```
+
+服务器上的 `.env` 在 `/opt/kocopilot/server/.env`（root 可读写，`kocopilot` 用户只读）。
+
+### 11.9 不可破坏的红线（这几条踩了会出大事）
+
+| ❌ 不要做 | ✅ 应该做 |
+|---|---|
+| 在 `D:\nocode\` 父目录跑 git 命令 | 永远 `cd D:\nocode\koc-copilot` 再跑 |
+| 把 API Key 写到任何 `*.md` 或 `*.html` 里 | 只放在 `server/.env`（已被 gitignore） |
+| 在生产服务器手动改 `/opt/kocopilot/server/app/*.py` | 永远在本地改 → push → `deploy.sh`，让生产服务器 git pull |
+| `git push --force` 到 main 分支 | 永远只 `git push`；要回退用 `git revert` |
+| 直接 `kill -9` 服务进程 | 用 `systemctl restart kocopilot-server` |
+| 删 `.git/` 目录 | 真的要重新开局，先做 `git clone` 一份当备份再说 |
+
+### 11.10 报错关键字 → 怎么处理
+
+| 看到这个 | 通常原因 | 处理 |
+|---|---|---|
+| `LLM 调用失败：HTTP 401` | DeepSeek Key 错或被封 | 去 platform.deepseek.com 重置 |
+| `LLM 调用失败：HTTP 429` | 余额不足 / 触发限频 | 充值 / 等几分钟 |
+| `ASR 失败：upstream 401` | 火山 Key 错 | 去火山控制台核对 |
+| `502 Bad Gateway`（nginx） | 后端 systemd 服务挂了 | `systemctl restart kocopilot-server` |
+| `gunicorn timeout` | 视频太长 / DeepSeek 卡 | 检查 `journalctl -u kocopilot-server` 看上游耗时 |
+| pytest 找不到 `app` 模块 | cwd 不对 | `cd server` 后再跑，或用 `python -m pytest server/tests` |
+| `git push` 弹浏览器登录 | 凭证过期 | 用浏览器登 GitHub 重新授权即可 |
+| GitHub 拒绝 push 显示 secret detected | 不小心把 key 写进了文件 | 删 key、`git commit --amend`、再 push |
