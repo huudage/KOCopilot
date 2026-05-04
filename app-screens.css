@@ -1393,3 +1393,137 @@
   color: var(--danger, #dc2626);
 }
 
+/* ===== 历史项目可展开详情（v0.7） =====
+   .koc-history-item 替代旧的 grid li，让一条记录可以纵向容纳
+   "摘要行 + 展开详情" 两段；__row 内部仍用旧的 3 列 grid 保持视觉一致。 */
+.koc-list li.koc-history-item {
+  display: flex !important;
+  flex-direction: column;
+  grid-template-columns: none !important;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  align-items: stretch;
+}
+
+.koc-history-item__row {
+  display: grid;
+  grid-template-columns: 1.1fr 0.8fr auto auto auto;
+  gap: 0.6rem;
+  align-items: center;
+  font-size: 0.84rem;
+}
+
+@media (max-width: 760px) {
+  .koc-history-item__row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.koc-history-toggle {
+  white-space: nowrap;
+}
+
+.koc-history-detail {
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 0.84rem;
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+.koc-history-detail[hidden] {
+  display: none !important;
+}
+
+.koc-history-detail__sub {
+  font-size: 0.82rem;
+  color: var(--ink);
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.koc-history-detail__sub b {
+  color: var(--primary-700);
+}
+
+.koc-history-detail__item {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.6rem 0.85rem;
+}
+
+.koc-history-detail__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.koc-history-detail__head b {
+  font-size: 0.9rem;
+  color: var(--ink);
+}
+
+.koc-history-detail__score {
+  color: #f5a623;
+  letter-spacing: 1px;
+  font-size: 0.82rem;
+}
+
+.koc-history-detail__item p {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  color: var(--ink-mid);
+  line-height: 1.55;
+}
+
+.koc-history-detail__answer {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--primary);
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.koc-history-detail__choice {
+  display: inline-block;
+  margin-top: 0.2rem;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: var(--primary-100);
+  color: var(--primary-700);
+  font-size: 0.76rem;
+}
+
+.koc-history-detail__script pre {
+  margin: 0;
+  font-family: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.75rem 0.95rem;
+  max-height: 280px;
+  overflow-y: auto;
+  font-size: 0.84rem;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+.koc-history-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--line);
+}
+

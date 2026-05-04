@@ -273,7 +273,21 @@
       renderCard();
     }
 
-    return { bind: bind, getHint: getHint, render: renderCard, clear: clear };
+    /** 给 KOCHistory.saveScript 用：返回当前选中的人设原始对象（含 name / differentiation
+        / rationale / score），不存在时返回 null。命名前缀 _ 表示这是"内部消费 API"，
+        界面层应继续用 getHint() 拿到的纯文本上下文。 */
+    function snapshot() {
+      var p = load();
+      if (!p) return null;
+      return {
+        name: p.name || "",
+        differentiation: p.differentiation || "",
+        rationale: p.rationale || "",
+        score: p.score || 0,
+      };
+    }
+
+    return { bind: bind, getHint: getHint, render: renderCard, clear: clear, _snapshot: snapshot };
   })();
   window.KOCActivePersona = KOCActivePersona;
 
@@ -468,7 +482,33 @@
           copyBtn.disabled = false;
           copyBtn.dataset.fullText = resp.full_text || "";
         }
-        KOCApi.showToast("脚本生成完成 · 用时 " + resp.elapsed_ms + "ms", "success");
+        // 一次性把"完整项目"入库——只有走到这里说明用户真的产出了脚本，
+        // 工作台「我的脚本项目」才会出现新条目。
+        if (window.KOCHistory && typeof window.KOCHistory.saveScript === "function") {
+          try {
+            const activePersona = (window.KOCActivePersona && window.KOCActivePersona._snapshot)
+              ? window.KOCActivePersona._snapshot()
+              : null;
+            window.KOCHistory.saveScript({
+              persona: activePersona,
+              transcript: state.transcript || "",
+              skeleton: state.skeleton || null,
+              answers: state.answers || [],
+              script: resp,
+            });
+          } catch (e) {
+            // 入库失败不阻断主流程；脚本仍正常显示
+            console.warn("[KOCHistory.saveScript] failed:", e);
+          }
+        }
+        // 同时把脚本 full_text 缓存进 sessionStorage，给同浏览器内的「标题车间」无缝带入。
+        // feature-3.html 的 bindSeoForm 在加载时会检测这个 key 并自动填入 textarea。
+        try {
+          if (resp.full_text) {
+            sessionStorage.setItem("koc.lastScriptForSeo", resp.full_text);
+          }
+        } catch (_) {}
+        KOCApi.showToast("脚本生成完成 · 用时 " + resp.elapsed_ms + "ms · 已存入工作台", "success");
       } catch (e) {
         if (scriptOut) {
           scriptOut.innerHTML = '<div class="koc-loading" style="color:var(--danger)">' +
@@ -738,15 +778,13 @@
           persona_hint: personaHint,
         });
         renderSkeleton(skeletonPanel, placeholder, resp);
-        if (window.KOCHistory && typeof window.KOCHistory.saveSkeleton === "function") {
-          try { window.KOCHistory.saveSkeleton(resp, transcript); } catch (_) {}
-        }
-        // 拆解成功 → 激活第 3 步引导式问答（不自动出题，用户需点「开始」按钮，
-        // 这样即使再次拆解也不会打断对话）
+        // v0.7 起：拆解只是中间产物，不再单独保存。整个项目（人设 + 台词 + 骨架 +
+        // 答案 + 脚本）由 KOCQAFlow.generateScript 在第 4 步成功后一次性入库。
+        // 这样中途放弃就不会污染工作台。
         if (window.KOCQAFlow) {
           try { window.KOCQAFlow.activate(resp, transcript); } catch (_) {}
         }
-        KOCApi.showToast("拆解完成 · 用时 " + resp.elapsed_ms + "ms · 已存入工作台", "success");
+        KOCApi.showToast("拆解完成 · 用时 " + resp.elapsed_ms + "ms · 进入第 3 步问答", "success");
       } catch (e) {
         placeholder.classList.remove("koc-loading");
         placeholder.className = "koc-loading";
@@ -808,8 +846,23 @@
   }
 
   // ============================================================================
-  // Module 3 — SEO titles
+  // Module 3 — SEO titles / description / tags
+  //
+  // feature-3 与 feature-1 的衔接：
+  //   1) feature-1 第 4 步生成脚本后，把 full_text 写到 sessionStorage["koc.lastScriptForSeo"]
+  //   2) 工作台「我的脚本项目」点「带入标题车间 →」也写同一个 key
+  //   3) 用户进 feature-3 后，本函数检测该 key —— 有就把 textarea 内容替换为真实脚本
+  //      并 toast 一行「已从拆解工坊带入」；没有就保留 HTML 自带的 demo 文本作为占位。
+  //   4) 「从拆解工坊带入」按钮也走同一通道：手动触发一次检测；没有数据就提示用户去 feature-1。
+  //
+  // 输出区交互：
+  //   - 每张「采用」按钮 → 复制该标题文本
+  //   - 「复制简介」按钮 → 复制视频简介
+  //   - 「换一版」按钮 → 重新触发主生成（调一次 /api/seo/titles）
+  //   - 「一键复制全部标签」按钮 → 把 3 类标签拼接复制
   // ============================================================================
+  const SEO_SS_KEY = "koc.lastScriptForSeo";
+
   function bindSeoForm() {
     const textarea = document.querySelector('textarea.koc-comment-input[aria-label="脚本输入"]');
     if (!textarea) return;
@@ -818,6 +871,9 @@
     );
     if (!generateBtn) return;
 
+    const bringInBtn = Array.from(document.querySelectorAll("button.btn-ghost")).find(
+      (b) => /从拆解工坊带入/.test((b.textContent || "").trim())
+    );
     const titlesContainer = document.querySelector(".koc-output-grid");
     const descSection = Array.from(document.querySelectorAll("h2.koc-sec-title")).find(
       (h) => /视频简介/.test(h.textContent || "")
@@ -826,10 +882,57 @@
     const tagsSection = Array.from(document.querySelectorAll("h2.koc-sec-title")).find(
       (h) => /标签矩阵/.test(h.textContent || "")
     );
-    const tagsPanel = tagsSection ? tagsSection.nextElementSibling.nextElementSibling : null;
     // tagsSection -> sec-sub -> panel; we walk two siblings.
+    const tagsPanel = tagsSection ? tagsSection.nextElementSibling.nextElementSibling : null;
 
-    generateBtn.addEventListener("click", async () => {
+    // ---- 自动带入：进页面时检测 sessionStorage ----
+    try {
+      const cached = sessionStorage.getItem(SEO_SS_KEY);
+      if (cached && cached.length >= 20) {
+        textarea.value = cached;
+        KOCApi.showToast("已从拆解工坊带入脚本（" + cached.length + " 字）", "success");
+        // 一次性消费 key，避免下次再访问还重复 toast；用户如需再带入可点按钮
+        sessionStorage.removeItem(SEO_SS_KEY);
+      }
+    } catch (_) {}
+
+    // ---- 「从拆解工坊带入」按钮 ----
+    if (bringInBtn) {
+      bringInBtn.addEventListener("click", () => {
+        try {
+          const cached = sessionStorage.getItem(SEO_SS_KEY);
+          if (cached && cached.length >= 20) {
+            textarea.value = cached;
+            sessionStorage.removeItem(SEO_SS_KEY);
+            KOCApi.showToast("已带入脚本（" + cached.length + " 字）", "success");
+            return;
+          }
+        } catch (_) {}
+        // 没有缓存：去工作台找个已保存的脚本项目；都没有就引导去生成
+        const scripts =
+          (window.KOCHistory && typeof window.KOCHistory.listScripts === "function")
+            ? window.KOCHistory.listScripts()
+            : [];
+        if (scripts.length === 0) {
+          KOCApi.showToast(
+            "本地还没有可用的脚本，请先去『爆款拆解』完成 4 步流程。",
+            "error"
+          );
+          return;
+        }
+        // 用最新的一条
+        const latest = scripts[0];
+        if (latest && latest.script && latest.script.full_text) {
+          textarea.value = latest.script.full_text;
+          KOCApi.showToast("已带入最近的脚本项目（" + latest.script.full_text.length + " 字）", "success");
+        } else {
+          KOCApi.showToast("最近的脚本记录缺少 full_text，无法带入。", "error");
+        }
+      });
+    }
+
+    // 生成主流程：把渲染后的输出连同操作按钮一起绑定
+    async function runGenerate() {
       const script = (textarea.value || "").trim();
       if (script.length < 20) {
         KOCApi.showToast("脚本至少 20 字。", "error");
@@ -847,6 +950,8 @@
         renderSeoTitles(titlesContainer, resp.titles || []);
         renderSeoDescription(descPanel, resp.description || "");
         renderSeoTags(tagsPanel, resp.tags || {});
+        // 输出区按钮在每次生成后会被 innerHTML 重写，重新绑定一次
+        bindSeoOutputActions(descPanel, tagsPanel, runGenerate);
         KOCApi.showToast(
           "生成 " + (resp.titles || []).length + " 个标题 · 用时 " + resp.elapsed_ms + "ms",
           "success"
@@ -857,7 +962,93 @@
       } finally {
         KOCApi.setLoading(generateBtn, false);
       }
+    }
+    generateBtn.addEventListener("click", runGenerate);
+
+    // 首屏（demo 静态内容）也把按钮绑定起来——用户即使没生成也能体验复制
+    bindSeoOutputActions(descPanel, tagsPanel, runGenerate);
+  }
+
+  /** 把简介区 / 标签区 / 已渲染的标题卡上的按钮绑定起来。重复绑定通过 dataset 锁防止。 */
+  function bindSeoOutputActions(descPanel, tagsPanel, runGenerate) {
+    // 「采用」= 复制该标题文本
+    document.querySelectorAll(".koc-output-card").forEach((card) => {
+      const btn = card.querySelector("button");
+      if (!btn || btn.dataset.kocSeoBound === "1") return;
+      btn.dataset.kocSeoBound = "1";
+      btn.addEventListener("click", async () => {
+        const txtEl = card.querySelector(".koc-output-card__text");
+        const text = (txtEl && txtEl.textContent ? txtEl.textContent : "").trim();
+        if (!text) return;
+        await copyToClipboard(text);
+        KOCApi.showToast("已复制：" + text.slice(0, 24) + (text.length > 24 ? "…" : ""), "success");
+      });
     });
+
+    // 「复制简介」/「换一版」
+    if (descPanel) {
+      descPanel.querySelectorAll("button").forEach((btn) => {
+        if (btn.dataset.kocSeoBound === "1") return;
+        btn.dataset.kocSeoBound = "1";
+        const label = (btn.textContent || "").trim();
+        btn.addEventListener("click", async () => {
+          if (/复制简介/.test(label)) {
+            const p = descPanel.querySelector("p");
+            const text = (p && p.textContent ? p.textContent : "").trim();
+            if (!text) {
+              KOCApi.showToast("还没有简介内容可复制。", "error");
+              return;
+            }
+            await copyToClipboard(text);
+            KOCApi.showToast("已复制简介（" + text.length + " 字）", "success");
+          } else if (/换一版/.test(label)) {
+            // 重跑一次主生成（DeepSeek 每次输出会有变化，足以"换一版"）
+            KOCApi.showToast("正在重新生成…", "info");
+            runGenerate();
+          }
+        });
+      });
+    }
+
+    // 「一键复制全部标签」
+    if (tagsPanel) {
+      tagsPanel.querySelectorAll("button").forEach((btn) => {
+        if (btn.dataset.kocSeoBound === "1") return;
+        btn.dataset.kocSeoBound = "1";
+        const label = (btn.textContent || "").trim();
+        if (!/一键复制全部标签|复制全部标签/.test(label)) return;
+        btn.addEventListener("click", async () => {
+          const tags = Array.from(tagsPanel.querySelectorAll(".koc-tag")).map((t) =>
+            (t.textContent || "").trim()
+          ).filter(Boolean);
+          if (tags.length === 0) {
+            KOCApi.showToast("当前还没有标签可复制。", "error");
+            return;
+          }
+          const text = tags.join(" ");
+          await copyToClipboard(text);
+          KOCApi.showToast("已复制 " + tags.length + " 个标签", "success");
+        });
+      });
+    }
+  }
+
+  /** 复制工具：优先用现代 Clipboard API；fallback 到 textarea + execCommand。 */
+  async function copyToClipboard(text) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+    } catch (_) { /* fall through */ }
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); } catch (_) {}
+    document.body.removeChild(ta);
   }
 
   function renderSeoTitles(container, titles) {
