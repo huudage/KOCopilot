@@ -553,6 +553,74 @@
   border-radius: 4px;
 }
 
+/* 拆解前的空状态卡片 */
+.koc-skeleton-empty {
+  padding: 1.6rem 1.4rem;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--bg-soft);
+  text-align: center;
+  color: var(--ink-muted);
+}
+
+.koc-skeleton-empty__icon {
+  font-size: 2rem;
+  line-height: 1;
+  margin-bottom: 0.4rem;
+}
+
+.koc-skeleton-empty h4 {
+  margin: 0 0 0.6rem;
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.koc-skeleton-empty p {
+  margin: 0 0 0.8rem;
+  font-size: 0.88rem;
+  line-height: 1.65;
+}
+
+.koc-skeleton-empty__sample {
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  margin-top: 1rem !important;
+}
+
+.koc-skeleton-empty__sample-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.4rem 0 0;
+  text-align: left;
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+}
+
+.koc-skeleton-empty__sample-list li {
+  padding: 0.5rem 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  line-height: 1.55;
+}
+
+.koc-skeleton-empty__sample-list code {
+  background: color-mix(in srgb, var(--brand) 15%, transparent);
+  color: var(--brand);
+  padding: 0.05rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  margin-right: 0.4rem;
+}
+
+.koc-skeleton-empty__sample-list em {
+  font-style: normal;
+  color: var(--ink-muted);
+  font-size: 0.74rem;
+}
+
 /* 引导问答 */
 .koc-qa {
   display: flex;

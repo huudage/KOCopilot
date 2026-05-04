@@ -208,15 +208,25 @@ function bindFeatureOneUploader() {
   }
 
   function ensureTextareaThenFill(transcript) {
-    // interactions.js injects #koc-transcript-input when feature-1.html loads.
-    // If for some reason it isn't there yet, retry briefly.
+    // After ASR succeeds, the user is currently looking at the "上传视频/音频" tab,
+    // so they cannot see either the transcript textarea or the "用 AI 拆解骨架"
+    // button — both live inside the hidden "粘贴台词文本" tab. We programmatically
+    // switch tabs so video-path and text-path users converge on the same exit:
+    // a single, prominent "用 AI 拆解骨架" CTA after ASR. (See bindInputTabs in
+    // interactions.js for the click handler that toggles aria-selected / hidden.)
     function tryFill(attempt = 0) {
       const ta = document.getElementById("koc-transcript-input");
       if (ta) {
+        const textTab = document.querySelector('.koc-input-tab[data-input-tab="text"]');
+        if (textTab && !textTab.classList.contains("is-active")) {
+          textTab.click();
+        }
         ta.value = transcript;
-        ta.scrollIntoView({ behavior: "smooth", block: "center" });
-        ta.focus();
-        // Make the next-step button obvious.
+        // Wait one rAF so the now-shown textarea has layout before scrolling.
+        requestAnimationFrame(() => {
+          ta.scrollIntoView({ behavior: "smooth", block: "center" });
+          ta.focus();
+        });
         const btn = document.querySelector('[data-koc-action="extract-skeleton"]');
         if (btn) btn.classList.add("koc-pulse");
       } else if (attempt < 10) {

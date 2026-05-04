@@ -222,13 +222,24 @@
       }
 
       KOCApi.setLoading(btn, true, "拆解中…");
-      // Replace existing skeleton placeholders with a loading state.
+      // Clear three different things that may sit in the skeleton panel:
+      //   1. the "等待拆解" empty-state block (initial page load)
+      //   2. the previous AI-rendered skeletons (re-running on a new transcript)
+      //   3. any leftover error placeholder from a previous failed attempt
+      // Then drop in a single loading placeholder. renderSkeleton() will swap
+      // this placeholder for the real Hook/Body/CTA fragments via outerHTML.
+      const oldEmpty = skeletonPanel.querySelector("[data-koc-skeleton-empty]");
       const oldSkeletons = skeletonPanel.querySelectorAll(".koc-skeleton");
+      const oldError = skeletonPanel.querySelector("[data-koc-placeholder]");
       const placeholder = document.createElement("div");
       placeholder.className = "koc-loading";
       placeholder.dataset.kocPlaceholder = "1";
       placeholder.textContent = "AI 正在拆解骨架…";
-      if (oldSkeletons.length) {
+      if (oldError) oldError.remove();
+      if (oldEmpty) {
+        oldEmpty.parentNode.insertBefore(placeholder, oldEmpty);
+        oldEmpty.remove();
+      } else if (oldSkeletons.length) {
         oldSkeletons[0].parentNode.insertBefore(placeholder, oldSkeletons[0]);
         oldSkeletons.forEach((n) => n.remove());
       } else {

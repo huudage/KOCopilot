@@ -153,31 +153,34 @@
               <span class="koc-pill">DeepSeek</span>
             </div>
 
-            <div class="koc-skeleton">
-              <div class="koc-skeleton__time">0:00–0:05</div>
-              <div class="koc-skeleton__body">
-                <h4>Hook · 反常识陈述</h4>
-                <p>原视频前 3 秒台词：「90% 的人冰箱都用错了——你以为塞满才划算，其实越满越浪费。」</p>
-                <em>可迁移：用反常识观点撬动停留。</em>
-              </div>
-            </div>
-
-            <div class="koc-skeleton">
-              <div class="koc-skeleton__time">0:05–1:30</div>
-              <div class="koc-skeleton__body">
-                <h4>Body · 4 段递进</h4>
-                <p>① 暴露问题（拍杂乱冰箱）→ ② 提出 3 步法 → ③ 实拍演示对比 → ④ 用户自测题。</p>
-                <em>情绪曲线：好奇 → 共鸣 → 反转 → 认同。</em>
-              </div>
-            </div>
-
-            <div class="koc-skeleton">
-              <div class="koc-skeleton__time">1:30–2:14</div>
-              <div class="koc-skeleton__body">
-                <h4>CTA · 评论区话题</h4>
-                <p>「你家冰箱属于哪一种？把首字母打在评论区，我下期挨个点评。」</p>
-                <em>可迁移：低门槛 + 个性化承诺，激发互动。</em>
-              </div>
+            <!-- 空状态：拆解前显示明确指引；点击「用 AI 拆解骨架」后会被
+                 interactions.js 的 renderSkeleton 替换为真实的 Hook/Body/CTA
+                 卡片（包含可迁移模板）。 -->
+            <div class="koc-skeleton-empty" data-koc-skeleton-empty>
+              <div class="koc-skeleton-empty__icon">⏳</div>
+              <h4>等待拆解</h4>
+              <p>
+                请先在<b>第 1 步</b>提供对标内容（上传视频自动转写，或直接粘贴台词），
+                <br />校对文本后点击 <b>「用 AI 拆解骨架」</b> 按钮，
+                <br />AI 会按 <b>Hook · Body · CTA</b> 三段结构拆解你的视频，并提炼可迁移的创作模板。
+              </p>
+              <p class="koc-skeleton-empty__sample">
+                典型输出示例（仅示意 · 实际由 DeepSeek 基于你的内容生成）：
+              </p>
+              <ul class="koc-skeleton-empty__sample-list">
+                <li>
+                  <code>Hook · 反常识陈述</code>「90% 的人冰箱都用错了……」 →
+                  <em>可迁移：用反常识观点撬动停留。</em>
+                </li>
+                <li>
+                  <code>Body · 4 段递进</code> ① 暴露问题 → ② 提出方法 → ③ 实拍演示 → ④ 自测题 →
+                  <em>情绪曲线：好奇 → 共鸣 → 反转 → 认同。</em>
+                </li>
+                <li>
+                  <code>CTA · 评论区话题</code>「把首字母打在评论区，下期挨个点评。」 →
+                  <em>可迁移：低门槛 + 个性化承诺。</em>
+                </li>
+              </ul>
             </div>
           </article>
 
