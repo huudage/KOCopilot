@@ -16,11 +16,26 @@
  *   - ffmpeg.wasm 0.12 needs SharedArrayBuffer → page must be `crossOriginIsolated`.
  *     We achieve this via COOP/COEP headers in main.py (see middleware comment).
  *
+ * Why import from `/vendor/ffmpeg/...` instead of jsdelivr CDN:
+ *   The HTML spec FORBIDS constructing a Worker from a cross-origin script URL,
+ *   regardless of CORP/CORS headers. ffmpeg.wasm 0.12.x's `classes.js` does:
+ *
+ *       new Worker(new URL("./worker.js", import.meta.url), { type: "module" })
+ *
+ *   If `import.meta.url` is `https://cdn.jsdelivr.net/...`, then the resolved
+ *   worker.js URL is also cross-origin → browser throws
+ *   "Failed to construct 'Worker': Script ... cannot be accessed from origin".
+ *   The only fix is to host the ffmpeg + util ESM bundles on the SAME origin as
+ *   the page that imports them. We mirror them under /vendor/ffmpeg/ to satisfy
+ *   this constraint. (ffmpeg-core's wasm/js/worker are still loaded from jsdelivr
+ *   because we wrap them in blob: URLs via `toBlobURL`, which IS allowed
+ *   cross-origin.)
+ *
  * Single-instance pattern:
  *   ffmpeg.wasm core is ~30 MB; we load it once per page session and reuse.
  */
-import { FFmpeg } from "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js";
-import { fetchFile, toBlobURL } from "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/esm/index.js";
+import { FFmpeg } from "/vendor/ffmpeg/ffmpeg/index.js";
+import { fetchFile, toBlobURL } from "/vendor/ffmpeg/util/index.js";
 
 const FFMPEG_CORE_BASE = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/esm";
 const VIDEO_EXTENSIONS = /\.(mp4|mov|m4v|webm|mkv|avi|flv)$/i;

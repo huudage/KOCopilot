@@ -222,6 +222,39 @@ fi
 ok "$SERVICE_NAME is active"
 
 # ---------------------------------------------------------------------------
+# 7b. sudoers — allow $RUN_USER to restart its own service without a password
+# ---------------------------------------------------------------------------
+# Why: scripts/deploy.sh runs as $RUN_USER (kocopilot, NOT root) and ends with
+#   `sudo systemctl restart kocopilot-server`. Without this rule deploy.sh
+#   blocks waiting for a password that nobody types, and CI/cron deployments
+#   silently hang. We scope the NOPASSWD whitelist to ONLY the three subcommands
+#   the deploy script actually needs (restart / reload / status), and ONLY for
+#   our own systemd unit — never a blanket sudo grant.
+log "Installing sudoers rule for ${RUN_USER} (deploy.sh needs passwordless restart)…"
+SUDOERS_FILE="/etc/sudoers.d/${RUN_USER}"
+cat > "${SUDOERS_FILE}" <<EOF
+# Managed by KOCopilot install-on-medi-server.sh — do not edit by hand.
+# Allows the ${RUN_USER} user to restart/reload/status its own service so
+# scripts/deploy.sh works without prompting for a password.
+${RUN_USER} ALL=(root) NOPASSWD: /bin/systemctl restart ${SERVICE_NAME}, /bin/systemctl reload ${SERVICE_NAME}, /bin/systemctl status ${SERVICE_NAME}, /usr/bin/systemctl restart ${SERVICE_NAME}, /usr/bin/systemctl reload ${SERVICE_NAME}, /usr/bin/systemctl status ${SERVICE_NAME}
+EOF
+chmod 440 "${SUDOERS_FILE}"
+
+# visudo --check returns non-zero on any syntax error → fail loudly rather than
+# leaving a broken sudoers file behind.
+if ! visudo -cf "${SUDOERS_FILE}" >/dev/null; then
+  rm -f "${SUDOERS_FILE}"
+  die "generated sudoers file failed visudo --check; removed to avoid breaking sudo."
+fi
+
+# Smoke-test: $RUN_USER must now be able to call sudo -n (non-interactive).
+if ! sudo -u "${RUN_USER}" sudo -n systemctl status "${SERVICE_NAME}" >/dev/null 2>&1; then
+  warn "${RUN_USER} still cannot run sudo -n systemctl — sudoers rule may not have taken effect."
+else
+  ok "${RUN_USER} can now restart ${SERVICE_NAME} without a password"
+fi
+
+# ---------------------------------------------------------------------------
 # 8. nginx site (HTTP only; certbot will add 443 block)
 # ---------------------------------------------------------------------------
 log "Installing nginx site…"
