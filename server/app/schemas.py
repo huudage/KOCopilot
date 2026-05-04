@@ -189,6 +189,10 @@ class QARequest(BaseModel):
     skeleton: dict = Field(..., description="第 2 步生成的骨架（hook/body/cta）原样回传")
     transcript: Optional[str] = Field(default=None, max_length=10000, description="原视频台词（可选，给 AI 补充上下文）")
     persona_hint: Optional[str] = Field(default=None, max_length=500, description="当前人设")
+    # 用户在第 3 步开始前自行填的「创作要求」——时长 / 节奏 / 风格 / 自由补充。
+    # 这个字段只是『软约束』：影响 LLM 出题选项的取向（如时长 = 30s 时 options 就该短促有冲击），
+    # 不影响轮次硬收敛（Router 仍按 MAX_QA_ROUNDS 拦截）。
+    brief: Optional[str] = Field(default=None, max_length=1000, description="用户自填的创作要求（时长/节奏/风格/自由补充）")
     answers: List[QAAnswer] = Field(default_factory=list, max_length=MAX_QA_ROUNDS)
 
 
@@ -218,6 +222,9 @@ class ScriptRequest(BaseModel):
     answers: List[QAAnswer] = Field(default_factory=list, max_length=MAX_QA_ROUNDS)
     persona_hint: Optional[str] = Field(default=None, max_length=500)
     transcript: Optional[str] = Field(default=None, max_length=10000)
+    # 与 QARequest.brief 一致——前端把第 3 步开始前用户填的创作要求继续透传到第 4 步，
+    # 让脚本生成阶段做到「时长/节奏/风格」与出题阶段保持一致。
+    brief: Optional[str] = Field(default=None, max_length=1000, description="用户自填的创作要求（时长/节奏/风格/自由补充）")
 
 
 class ScriptScene(BaseModel):

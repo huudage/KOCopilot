@@ -77,6 +77,11 @@ async def generate_script(req: ScriptRequest, request: Request) -> ScriptRespons
 def _build_user_message(req: ScriptRequest) -> str:
     skeleton_json = json.dumps(req.skeleton, ensure_ascii=False, indent=2)
     persona_block = f"\n【当前人设】\n{req.persona_hint}" if req.persona_hint else ""
+    # brief 与 QA 阶段共享同一份用户自填创作要求——脚本阶段必须延续这套约束，
+    # 否则会出现「问答时按 30s 紧凑节奏选了选项，最终脚本却写了 1200 字」的不一致体验。
+    brief_block = (
+        f"\n【用户自填的创作要求（必须遵守）】\n{req.brief}" if req.brief else ""
+    )
     transcript_block = f"\n【原视频台词（仅供识别「不能照抄」的反面教材）】\n{req.transcript}" if req.transcript else ""
 
     if req.answers:
@@ -90,6 +95,7 @@ def _build_user_message(req: ScriptRequest) -> str:
     return (
         f"【对标视频骨架】\n{skeleton_json}"
         f"{persona_block}"
+        f"{brief_block}"
         f"{transcript_block}"
         f"{answer_block}\n"
         f"\n请严格按系统提示词的 JSON 格式返回完整的原创分镜脚本。"

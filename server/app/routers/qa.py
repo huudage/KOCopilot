@@ -103,6 +103,11 @@ def _build_user_message(req: QARequest, next_round: int) -> str:
 
     persona_block = f"\n【当前人设】\n{req.persona_hint}" if req.persona_hint else ""
     transcript_block = f"\n【原视频台词（供参考）】\n{req.transcript}" if req.transcript else ""
+    # brief 是用户在第 3 步开始前主动填的『创作要求』（时长/节奏/风格 + 自由补充）。
+    # 把它作为强约束注入到每一轮 user message 里，AI 出选项时必须把这套约束落地。
+    brief_block = (
+        f"\n【用户自填的创作要求（必须遵守）】\n{req.brief}" if req.brief else ""
+    )
 
     if req.answers:
         history_lines = []
@@ -117,6 +122,7 @@ def _build_user_message(req: QARequest, next_round: int) -> str:
     return (
         f"【对标视频骨架】\n{skeleton_json}"
         f"{persona_block}"
+        f"{brief_block}"
         f"{transcript_block}"
         f"{history_block}\n"
         f"\n【当前应出第 {next_round} 题】\n"

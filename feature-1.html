@@ -236,7 +236,15 @@
 
             <!-- 空状态：尚未拆解骨架 / 未启动问答时显示。
                  状态切换由 interactions.js 的 bindQAFlow 状态机驱动：
-                 [empty] → [running, round=1..3] → [done] → 自动触发脚本生成。-->
+                 [empty] → [brief 表单可填] → [running, round=1..3] → [done] → 自动触发脚本生成。
+
+                 brief 表单设计原因（v0.7 起）：
+                 - 之前 3 轮单选题虽然能收敛，但用户对「时长 / 节奏 / 风格」缺少前置约束，
+                   出现"问答时按 30s 短视频选了选项，最终脚本写了 1200 字"的不一致体验。
+                 - 这里在 QA 启动前加一个"创作要求"输入区——chip 快速选择 + 自由补充，
+                   填好后这套约束会随每一次 /api/qa/next 与 /api/script/generate 一起透传后端，
+                   让出题选项与最终脚本都贴合用户的真实需求。
+                 - 表单非必填（"跳过"按钮）——用户什么都不选，等同于以前的默认行为。 -->
             <div class="koc-qa-empty" data-koc-qa-empty>
               <div class="koc-qa-empty__icon">💬</div>
               <h4>等待第 2 步骨架完成</h4>
@@ -244,6 +252,58 @@
                 AI 拆解出 Hook / Body / CTA 之后，本步会自动出 3 道关键单选题 ——
                 <br />你的每个选择都会被第 4 步的脚本生成<b>原话或近义</b>用上。
               </p>
+
+              <!-- brief 表单：只有骨架就绪后（KOCQAFlow.activate 调用时）才会取消 hidden -->
+              <div class="koc-brief" data-koc-brief hidden>
+                <div class="koc-brief__head">
+                  <h5>开始问答前 · 告诉 AI 你的创作要求（可跳过）</h5>
+                  <p>这些选择会贯穿后续 3 轮出题与最终脚本生成，让产物贴合你的真实需求。</p>
+                </div>
+
+                <div class="koc-brief__field">
+                  <label>视频时长</label>
+                  <div class="koc-brief__chips" role="group" data-koc-brief-group="duration">
+                    <button type="button" class="koc-brief__chip" data-koc-brief-value="15s">15s</button>
+                    <button type="button" class="koc-brief__chip is-active" data-koc-brief-value="30s">30s</button>
+                    <button type="button" class="koc-brief__chip" data-koc-brief-value="60s">60s</button>
+                    <button type="button" class="koc-brief__chip" data-koc-brief-value="90s">90s</button>
+                    <button type="button" class="koc-brief__chip" data-koc-brief-value="3min">3min</button>
+                  </div>
+                </div>
+
+                <div class="koc-brief__field">
+                  <label>叙事节奏</label>
+                  <div class="koc-brief__chips" role="group" data-koc-brief-group="pace">
+                    <button type="button" class="koc-brief__chip is-active" data-koc-brief-value="紧凑">紧凑（快切快剪）</button>
+                    <button type="button" class="koc-brief__chip" data-koc-brief-value="标准">标准</button>
+                    <button type="button" class="koc-brief__chip" data-koc-brief-value="慢节奏">慢节奏（vlog 感）</button>
+                  </div>
+                </div>
+
+                <div class="koc-brief__field">
+                  <label>风格调性</label>
+                  <div class="koc-brief__chips" role="group" data-koc-brief-group="style">
+                    <button type="button" class="koc-brief__chip is-active" data-koc-brief-value="中性">中性</button>
+                    <button type="button" class="koc-brief__chip" data-koc-brief-value="幽默">幽默</button>
+                    <button type="button" class="koc-brief__chip" data-koc-brief-value="严肃">严肃</button>
+                    <button type="button" class="koc-brief__chip" data-koc-brief-value="夸张">夸张</button>
+                    <button type="button" class="koc-brief__chip" data-koc-brief-value="温情">温情</button>
+                  </div>
+                </div>
+
+                <div class="koc-brief__field">
+                  <label for="koc-brief-extra">补充要求（可选 · 不超过 200 字）</label>
+                  <textarea
+                    id="koc-brief-extra"
+                    data-koc-brief-extra
+                    class="koc-comment-input"
+                    rows="3"
+                    maxlength="200"
+                    placeholder="例如：面向通勤上班族，至少带 1 个真实数据，开场要有反差感…"
+                  ></textarea>
+                </div>
+              </div>
+
               <button class="btn btn-ghost sm" type="button" data-koc-action="qa-start" disabled>
                 等待骨架就绪…
               </button>

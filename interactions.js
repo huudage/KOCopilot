@@ -287,7 +287,33 @@
       };
     }
 
-    return { bind: bind, getHint: getHint, render: renderCard, clear: clear, _snapshot: snapshot };
+    /** feature-2 在用户「采用此方案 → 进入爆款拆解」时调用：
+        把指定记录的某个方案设为当前活动人设，然后由调用方决定是否跳转 feature-1。
+        这里不做跳转逻辑，仅负责持久化（保持单一职责）。 */
+    function setSelected(record, personaIdx) {
+      if (!record || !record.id || !Array.isArray(record.personas)) return false;
+      var persona = record.personas[personaIdx];
+      if (!persona) return false;
+      save({
+        recordId: record.id,
+        personaIdx: personaIdx,
+        name: persona.name || "",
+        differentiation: persona.differentiation || "",
+        rationale: persona.rationale || "",
+        score: persona.score || 0,
+        inputs: record.inputs || {},
+      });
+      return true;
+    }
+
+    return {
+      bind: bind,
+      getHint: getHint,
+      render: renderCard,
+      clear: clear,
+      setSelected: setSelected,
+      _snapshot: snapshot,
+    };
   })();
   window.KOCActivePersona = KOCActivePersona;
 
@@ -312,11 +338,52 @@
       skeleton: null,
       transcript: "",
       personaHint: "",
+      brief: "",         // 用户在 brief 表单填的『时长 / 节奏 / 风格 / 自由补充』汇总文本
       answers: [], // [{round, question, choice}]
       latest: null, // 最近一次 /api/qa/next 响应
     };
 
     function $(sel) { return document.querySelector(sel); }
+
+    /** 把 brief 表单里 3 组 chip + 1 段自由文本汇总成一段后端可读的纯文本。
+        约定格式："时长：30s · 节奏：紧凑 · 风格：幽默 · 补充：xxx"——
+        prompts/qa.py 与 prompts/script.py 对此格式都做了识别。
+        如果用户什么都没选 / 自由文本为空，返回空串（后端将 brief 视为可选）。 */
+    function collectBrief() {
+      const briefEl = $("[data-koc-brief]");
+      if (!briefEl || briefEl.hidden) return "";
+      const parts = [];
+      ["duration", "pace", "style"].forEach((groupKey) => {
+        const active = briefEl.querySelector(
+          '[data-koc-brief-group="' + groupKey + '"] .koc-brief__chip.is-active'
+        );
+        if (active) {
+          const labelMap = { duration: "时长", pace: "节奏", style: "风格" };
+          parts.push(labelMap[groupKey] + "：" + active.dataset.kocBriefValue);
+        }
+      });
+      const extra = $("[data-koc-brief-extra]");
+      const extraText = extra ? (extra.value || "").trim() : "";
+      if (extraText) parts.push("补充：" + extraText.slice(0, 200));
+      return parts.join(" · ");
+    }
+
+    /** 给 brief 表单的 chip 组绑定『单选高亮』行为——同组互斥，点击切换 is-active。
+        每个 chip 用 dataset.kocBound 标记防重复绑定（activate 多次调用也安全）。 */
+    function bindBriefChips() {
+      document.querySelectorAll(".koc-brief__chip").forEach((chip) => {
+        if (chip.dataset.kocBound === "1") return;
+        chip.dataset.kocBound = "1";
+        chip.addEventListener("click", () => {
+          const group = chip.closest("[data-koc-brief-group]");
+          if (!group) return;
+          group.querySelectorAll(".koc-brief__chip").forEach((sib) => {
+            sib.classList.remove("is-active");
+          });
+          chip.classList.add("is-active");
+        });
+      });
+    }
 
     function activate(skeleton, transcript) {
       state.skeleton = skeleton;
@@ -325,15 +392,31 @@
       // 早期版本曾"自动取最新一条人设记录的第一个方案"，导致用户保存多个人设后被静默拿错；
       // 现在所有 persona 上下文都必须经过用户在第 0 步显式确认。
       state.personaHint = (window.KOCActivePersona && window.KOCActivePersona.getHint()) || "";
+      state.brief = "";
       state.answers = [];
       state.latest = null;
+
+      // brief 表单：骨架就绪后才放出来——之前还在 hidden，避免用户在 1/2 步就被
+      // 一堆配置项干扰主流程。骨架来了再亮起，并保留默认选中的『30s · 紧凑 · 中性』
+      // 兜底，让"什么都不点直接开始"也能产出合理产物。
+      const briefEl = $("[data-koc-brief]");
+      if (briefEl) briefEl.hidden = false;
+      bindBriefChips();
 
       const startBtn = $('[data-koc-action="qa-start"]');
       if (startBtn) {
         startBtn.disabled = false;
-        startBtn.textContent = "开始 3 轮单选问答 →";
+        startBtn.textContent = "用上面要求开始 3 轮单选问答 →";
         if (!startBtn.dataset.kocBound) {
-          startBtn.addEventListener("click", () => loadNextRound());
+          startBtn.addEventListener("click", () => {
+            // 锁定 brief 防止用户中途改完导致问答与脚本不一致；
+            // 一锁就是整轮 QA + Script 都用这一份。
+            state.brief = collectBrief();
+            briefEl && briefEl.querySelectorAll("button, textarea").forEach((el) => {
+              el.disabled = true;
+            });
+            loadNextRound();
+          });
           startBtn.dataset.kocBound = "1";
         }
       }
@@ -377,6 +460,9 @@
           skeleton: state.skeleton,
           transcript: state.transcript || null,
           persona_hint: state.personaHint || null,
+          // brief 在 activate→start 那一刻被 collectBrief() 锁定；
+          // 后端 schemas.QARequest.brief 接 Optional[str]，空串/null 等价。
+          brief: state.brief || null,
           answers: state.answers,
         });
         state.latest = resp;
@@ -476,6 +562,9 @@
           answers: state.answers,
           persona_hint: state.personaHint || null,
           transcript: state.transcript || null,
+          // 与 /api/qa/next 透传同一份 brief——保证出题阶段的『时长/节奏/风格』
+          // 约束在最终脚本里也被严格落地（避免问答时按 30s 选项，结果脚本写成 1200 字）。
+          brief: state.brief || null,
         });
         renderScript(resp);
         if (copyBtn) {
@@ -662,12 +751,14 @@
       setBusy(personasContainer, "AI 正在分析你的输入并生成 3 个差异化人设…");
       try {
         const resp = await KOCApi.postJSON("/api/persona/generate", body);
-        renderPersonas(personasContainer, resp.personas || []);
-        // Persist into the workspace history board (best-effort; ignores if
-        // KOCHistory is not loaded on this page or storage quota is full).
+        // 先把方案存进 KOCHistory 拿到 record（带 id），再渲染卡片——
+        // 因为渲染时每张卡的「采用此方案 → 进入爆款拆解」按钮需要 record.id 才能
+        // 让 KOCActivePersona.setSelected 与拆解页的人设面板正确联动。
+        let record = null;
         if (window.KOCHistory && typeof window.KOCHistory.savePersonas === "function") {
-          try { window.KOCHistory.savePersonas(resp.personas || [], body); } catch (_) {}
+          try { record = window.KOCHistory.savePersonas(resp.personas || [], body); } catch (_) {}
         }
+        renderPersonas(personasContainer, resp.personas || [], record);
         KOCApi.showToast(
           "已生成 " + (resp.personas || []).length + " 个方案 · 用时 " + resp.elapsed_ms + "ms · 已存入工作台",
           "success"
@@ -681,7 +772,17 @@
     });
   }
 
-  function renderPersonas(container, personas) {
+  /**
+   * 渲染 AI 生成的 3 个差异化人设方案。
+   *
+   * @param {HTMLElement} container 渲染容器（.koc-personas）
+   * @param {Array} personas        AI 返回的方案数组
+   * @param {Object|null} record    KOCHistory.savePersonas 刚刚返回的记录（含 id）
+   *                                —— 没有它就无法支持「采用此方案 → 进入爆款拆解」一键跳转。
+   *                                在调用方未提供时，仍能正常渲染卡片，但「采用」按钮会
+   *                                降级为指向人设生成页的提示，避免出现"按了没反应"的死按钮。
+   */
+  function renderPersonas(container, personas, record) {
     if (!personas.length) {
       container.innerHTML =
         '<div class="koc-loading">AI 没有返回任何方案，请尝试更具体的输入或刷新重试。</div>';
@@ -691,6 +792,17 @@
       .map((p, idx) => {
         const stars = "★".repeat(Math.max(1, Math.min(5, p.score || 3)));
         const refs = (p.reference_accounts || []).join("、");
+        // 「采用此方案 → 进入爆款拆解」是该模块的核心 CTA：
+        //   - 写入 sessionStorage["koc.activePersona"]（由 KOCActivePersona 控制）
+        //   - 跳转 feature-1.html，第 0 步会自动渲染选定人设
+        // 没有 record 时（理论不会出现，除非 localStorage 写入失败）按钮文案改为提示。
+        const canAdopt = !!(record && record.id);
+        const adoptBtn = canAdopt
+          ? '<button type="button" class="btn btn-primary sm koc-persona__adopt"' +
+              ' data-record-id="' + escapeHtml(record.id) + '"' +
+              ' data-persona-idx="' + idx + '"' +
+            '>采用此方案 → 进入爆款拆解</button>'
+          : '<span class="koc-persona__adopt-hint">（保存失败，前往工作台手动选择）</span>';
         return (
           '<article class="koc-persona">' +
           '<span class="koc-pill' +
@@ -703,10 +815,35 @@
           "<dt>对标账号</dt><dd>" + escapeHtml(refs || "-") + "</dd>" +
           "<dt>起号建议</dt><dd>" + escapeHtml(p.onboarding_advice || "-") + "</dd>" +
           "<dt>变现预判</dt><dd>" + escapeHtml(p.monetization_outlook || "-") + "</dd>" +
-          "</dl></article>"
+          "</dl>" +
+          '<div class="koc-persona__cta">' + adoptBtn + "</div>" +
+          "</article>"
         );
       })
       .join("");
+
+    // 给所有「采用此方案」按钮绑定一次点击事件——委托模式更稳，但这里数量固定为 ≤ 5
+    // 直接遍历更直观；KOCActivePersona.setSelected 失败时给 toast 而非崩溃。
+    if (record && record.id) {
+      container.querySelectorAll(".koc-persona__adopt").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const personaIdx = parseInt(btn.dataset.personaIdx, 10);
+          const ok = window.KOCActivePersona
+            && typeof window.KOCActivePersona.setSelected === "function"
+            && window.KOCActivePersona.setSelected(record, personaIdx);
+          if (!ok) {
+            KOCApi.showToast("人设保存失败，请重试或前往工作台手动选择", "error");
+            return;
+          }
+          KOCApi.showToast(
+            "已采用『" + (personas[personaIdx] && personas[personaIdx].name || "未命名") + "』，正在进入爆款拆解…",
+            "success"
+          );
+          // 给 toast 一个露脸时间再跳转，避免用户看不到反馈
+          setTimeout(() => { window.location.href = "feature-1.html"; }, 500);
+        });
+      });
+    }
   }
 
   // ============================================================================

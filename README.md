@@ -509,6 +509,14 @@ bash scripts/deploy.sh
 - ⏳ **待用户做的 5 件事**：① 阿里云加 DNS A 记录 ② 火山开通**极速版**资源（资源 ID `volc.bigasr.auc_turbo`） ③ rsync 代码上服务器 ④ root 跑 install ⑤ certbot
 - ⏳ **v0.6 计划**：① OSS 直传支持 100MB 上限的更长视频 ② 流式 SSE typewriter ③ slowapi IP 限频 ④ Sentry 错误监控
 
+### 2026-05-04 第八次交付（人设直连拆解 + brief 创作要求）
+- ✅ **人设页生成即可一键采用**：feature-2 的每张人设方案卡底部新增「采用此方案 → 进入爆款拆解」按钮；点击后 `KOCActivePersona.setSelected(record, idx)` 把 `{recordId, personaIdx, name, differentiation, rationale, score, inputs}` 写进 `sessionStorage["koc.activePersona"]`，再跳转 `feature-1.html`，第 0 步面板自动渲染选定方案——告别"生成完还得跳两次才能开始拆解"的体验断点
+- ✅ **第 3 步加 brief 创作要求表单**：在引导式问答启动前增加一组 `<chip>`（视频时长 15s/30s/60s/90s/3min · 节奏 紧凑/标准/慢节奏 · 风格 中性/幽默/严肃/夸张/温情）+ 200 字自由补充 textarea；用户点「开始问答」时表单立即锁定（防中途篡改），整轮 QA + 脚本都用同一份 brief
+- ✅ **brief 字段贯穿后端两个端点**：`schemas.QARequest.brief` / `schemas.ScriptRequest.brief` 均为 `Optional[str]` (≤1000 字)；`routers/qa.py` 与 `routers/script.py` 在 user message 中加入「【用户自填的创作要求（必须遵守）】」块；`prompts/qa.py` 与 `prompts/script.py` 强制 LLM 把时长/节奏/风格/自由补充作为硬约束落地（避免出现"问答按 30s 选了选项，最终脚本写成 1200 字"的不一致）
+- ✅ **OpenAPI schema 自验通过**：`brief` 在两个 request schema 中均以 `anyOf [string max 1000 | null]` 注册；超长 brief 边界返回 422；满轮次仍由 router 强制 `done=true`（0ms，不调 LLM）—— brief 不影响轮次硬收敛
+- ✅ **mock fingerprint 兼容**：mock client 仅依赖 system prompt 中的 `rationale` / `hook_narration` 关键词分诊，brief 字段引入后 mock 模式行为零变化
+- ⏳ **v0.9 计划**：① brief 选择落入 saveScript 历史项目，工作台展开后能看到当时的创作约束 ② 标题车间也接入 brief（让 SEO 标题贴合创作风格）
+
 ### 2026-05-04 第七次交付（feature-1 真正闭环：QA + 原创脚本）
 - ✅ **第 1 步输入做成选择题**：上传视频/音频 vs 粘贴台词文本 用 tab 切换，消除"两个并列输入框到底填哪个"的歧义；ASR 完成后自动切到文本 tab 并填入识别结果，引导用户点「用 AI 拆解骨架」
 - ✅ **第 2 步加空状态**：未拆解前显示「等待拆解」说明而非硬编码 demo 卡片，避免误导

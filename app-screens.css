@@ -1527,3 +1527,126 @@
   border-top: 1px solid var(--line);
 }
 
+/* =========================================================================
+   feature-2 · 人设方案卡片 CTA — 「采用此方案 → 进入爆款拆解」
+   设计要点：
+   - 与卡片正文（dl）之间留 0.6rem 视觉气口；
+   - 在 dl 的最下一行后跨整宽，确保 CTA 在不同方案分数下都对齐到底部。
+   ========================================================================= */
+.koc-persona__cta {
+  margin-top: 0.7rem;
+  padding-top: 0.7rem;
+  border-top: 1px dashed var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.koc-persona__adopt {
+  flex: 1;
+  min-width: 0;
+}
+
+.koc-persona__adopt-hint {
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  line-height: 1.5;
+}
+
+/* =========================================================================
+   feature-1 · 第 3 步 · brief 创作要求表单
+   设计原因：
+   - 让用户在出题前先把「时长 / 节奏 / 风格 / 自由补充」交代清楚，
+     这套约束会随每次 /api/qa/next 与 /api/script/generate 透传后端，
+     避免 30 秒短视频的问答最后产出 1200 字脚本的不一致。
+   - chip 用单选高亮，textarea 走全栈共享的 .koc-comment-input，
+     视觉上沿用现有 koc-active-persona 系卡片的 surface / line 配色。
+   ========================================================================= */
+.koc-brief {
+  margin: 0.4rem 0 0.9rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.koc-brief__head h5 {
+  margin: 0 0 0.25rem;
+  font-size: 0.92rem;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.koc-brief__head p {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  line-height: 1.55;
+}
+
+.koc-brief__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.koc-brief__field > label {
+  font-size: 0.8rem;
+  color: var(--ink-mid);
+  font-weight: 600;
+}
+
+.koc-brief__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.koc-brief__chip {
+  appearance: none;
+  border: 1px solid var(--line-strong);
+  background: var(--bg-deep);
+  color: var(--ink-mid);
+  border-radius: 999px;
+  padding: 0.32rem 0.85rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.koc-brief__chip:hover {
+  border-color: var(--primary-500, #6366f1);
+  color: var(--ink);
+}
+
+.koc-brief__chip.is-active {
+  background: var(--primary-100);
+  border-color: var(--primary-500, #6366f1);
+  color: var(--primary-700);
+  font-weight: 600;
+}
+
+.koc-brief__chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.koc-brief__chip:disabled:hover {
+  border-color: var(--line-strong);
+  color: var(--ink-mid);
+}
+
+.koc-brief textarea[data-koc-brief-extra] {
+  font-size: 0.85rem;
+  min-height: 4.5rem;
+  resize: vertical;
+}
+
+.koc-brief textarea[data-koc-brief-extra]:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
