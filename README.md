@@ -39,9 +39,11 @@ koc-copilot/
 │   │   ├── main.py                    # FastAPI 入口（路由 + 中间件 + 静态挂载）
 │   │   ├── config.py                  # Pydantic Settings（读取 .env）
 │   │   ├── schemas.py                 # 所有请求/响应 Pydantic 模型
-│   │   ├── routers/                   # 4 个业务端点 + ASR
+│   │   ├── routers/                   # 6 个业务端点 + ASR
 │   │   │   ├── persona.py             # POST /api/persona/generate
 │   │   │   ├── skeleton.py            # POST /api/skeleton/extract
+│   │   │   ├── qa.py                  # POST /api/qa/next        (引导式问答 ≤3 轮)
+│   │   │   ├── script.py              # POST /api/script/generate (基于骨架+答案出原创脚本)
 │   │   │   ├── seo.py                 # POST /api/seo/titles  （platform 锁定 douyin）
 │   │   │   ├── comments.py            # POST /api/comments/classify
 │   │   │   └── asr.py                 # POST /api/asr/transcribe (火山豆包 Flash)
@@ -506,6 +508,16 @@ bash scripts/deploy.sh
 - ✅ 35 个 pytest 全过（mock 路径 100% 覆盖）
 - ⏳ **待用户做的 5 件事**：① 阿里云加 DNS A 记录 ② 火山开通**极速版**资源（资源 ID `volc.bigasr.auc_turbo`） ③ rsync 代码上服务器 ④ root 跑 install ⑤ certbot
 - ⏳ **v0.6 计划**：① OSS 直传支持 100MB 上限的更长视频 ② 流式 SSE typewriter ③ slowapi IP 限频 ④ Sentry 错误监控
+
+### 2026-05-04 第七次交付（feature-1 真正闭环：QA + 原创脚本）
+- ✅ **第 1 步输入做成选择题**：上传视频/音频 vs 粘贴台词文本 用 tab 切换，消除"两个并列输入框到底填哪个"的歧义；ASR 完成后自动切到文本 tab 并填入识别结果，引导用户点「用 AI 拆解骨架」
+- ✅ **第 2 步加空状态**：未拆解前显示「等待拆解」说明而非硬编码 demo 卡片，避免误导
+- ✅ **第 3 步真做引导式问答**：新增 `POST /api/qa/next` 端点（DeepSeek 实现）；prompt 限制为 3 轮单选题（Hook / Body 切入 / CTA），路由层在 answers 长度 ≥ 3 时强制 `done=true`（router 拦截、不调 LLM、0ms 收敛）；前端用状态机驱动 IDLE→RUNNING(1..3)→DONE，progress 进度条 + 已答历史摘要 + 选项点过即冻结防重复
+- ✅ **第 4 步真出原创脚本**：新增 `POST /api/script/generate`，基于骨架 + 3 个答案 + 人设生成 hook_narration + scenes[] + cta_narration + full_text；前端用 .koc-skeleton 卡片复用样式渲染，**复制纯文本**按钮调 `navigator.clipboard.writeText()` 并提示字符数
+- ✅ **不开放自由输入（v0.x 决策）**：早期方案曾保留「让我自己输入…」自由文本框，但内测发现 LLM 把自由文本回填到下一轮 prompt 时容易出现"重复确认"循环、对话发散；v0.x 优先保收敛与产物质量，全部用 LLM 生成的可朗读选项，用户单选即可
+- ✅ **mock fingerprint 扩到 6 个**：`hook_narration` → script、`rationale` → qa；保证 `LLM_PROVIDER=mock` 时新接口仍有合规 sample 返回
+- ✅ **生产 ffmpeg.wasm 修复**：`@ffmpeg/ffmpeg` + `@ffmpeg/util` 改为本地 `/vendor/ffmpeg/` 同源加载（满足 Worker 同源约束）；nginx COOP/COEP 头在 `location /` 与 `/assets/` 内重复声明（修复 add_header 子块覆盖父块的经典坑）
+- ⏳ **v0.7 计划**：① 第 3 步加"重新出题"按钮 ② 已生成的脚本写入工作台历史 ③ 一键导出脚本到剪贴板 + 钉钉/飞书 webhook
 
 ### 2026-05-04 第六次交付（产品形态调整 + 运维卡片）
 - ✅ **首页 = 产品说明**：旧 `landing.html` 升格为 `index.html`，原工作台迁到 `workspace.html`；删除"爆款拆解"作为独立卖点的卡片（保留为工作台流程内的实现手段）；hero + 底部紫色 CTA 双重「进入工作台」

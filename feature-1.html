@@ -184,60 +184,73 @@
             </div>
           </article>
 
-          <article class="koc-panel" aria-labelledby="step-qa">
+          <article class="koc-panel" aria-labelledby="step-qa" data-koc-qa-panel>
             <div class="koc-panel__head">
               <div>
                 <h2 id="step-qa">第 3 步 · 引导式问答</h2>
-                <p>每一步基于骨架自动出题，3-7 轮收敛成原创脚本。</p>
+                <p>AI 基于骨架与人设出 3 道单选题，帮你做出 Hook / Body / CTA 三个关键创作决策。</p>
               </div>
-              <span class="koc-pill">填空式创作</span>
+              <span class="koc-pill" data-koc-qa-pill>≤ 3 轮收敛</span>
             </div>
 
-            <div class="koc-qa">
-              <div class="koc-qa__bot">
-                原视频在第 5 秒用了一个「职场反常识」作为 Hook。结合你的<b>「平价好物分享」</b>人设，你想用哪个「消费反常识」做钩子？
+            <!-- 空状态：尚未拆解骨架 / 未启动问答时显示。
+                 状态切换由 interactions.js 的 bindQAFlow 状态机驱动：
+                 [empty] → [running, round=1..3] → [done] → 自动触发脚本生成。-->
+            <div class="koc-qa-empty" data-koc-qa-empty>
+              <div class="koc-qa-empty__icon">💬</div>
+              <h4>等待第 2 步骨架完成</h4>
+              <p>
+                AI 拆解出 Hook / Body / CTA 之后，本步会自动出 3 道关键单选题 ——
+                <br />你的每个选择都会被第 4 步的脚本生成<b>原话或近义</b>用上。
+              </p>
+              <button class="btn btn-ghost sm" type="button" data-koc-action="qa-start" disabled>
+                等待骨架就绪…
+              </button>
+            </div>
+
+            <!-- 进行中：每一轮单题。bindQAFlow 会动态填入 question / options。 -->
+            <div class="koc-qa" data-koc-qa-current hidden>
+              <div class="koc-qa__progress" data-koc-qa-progress>
+                <span class="koc-qa__progress-step is-active" data-step="1">1 · Hook</span>
+                <span class="koc-qa__progress-step" data-step="2">2 · Body 切入</span>
+                <span class="koc-qa__progress-step" data-step="3">3 · CTA</span>
               </div>
-              <div class="koc-qa__opts">
-                <button class="koc-qa__opt is-selected" type="button">便宜的护肤品反而更纯净</button>
-                <button class="koc-qa__opt" type="button">大牌口红的实际使用频率远低于平价</button>
-                <button class="koc-qa__opt" type="button">让我自己输入…</button>
-              </div>
+              <div class="koc-qa__bot" data-koc-qa-question>（loading）</div>
+              <div class="koc-qa__rationale" data-koc-qa-rationale hidden></div>
+              <div class="koc-qa__opts" data-koc-qa-opts></div>
+            </div>
+
+            <!-- 已答历史 -->
+            <div class="koc-qa-history" data-koc-qa-history hidden>
+              <h5>已确认的 3 个决策</h5>
+              <ol data-koc-qa-history-list></ol>
             </div>
           </article>
 
-          <article class="koc-panel" aria-labelledby="step-final">
+          <article class="koc-panel" aria-labelledby="step-final" data-koc-script-panel>
             <div class="koc-panel__head">
               <div>
-                <h2 id="step-final">第 4 步 · 原创分镜脚本（草稿）</h2>
-                <p>结构延续骨架，文字均为基于你回答的新内容。</p>
+                <h2 id="step-final">第 4 步 · 原创分镜脚本</h2>
+                <p>基于第 2 步骨架结构 + 第 3 步你的 3 个决策，AI 重写为可朗读的口播稿。</p>
               </div>
               <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                <button class="btn btn-ghost sm" type="button">复制纯文本</button>
+                <button class="btn btn-ghost sm" type="button" data-koc-action="copy-script" disabled>复制纯文本</button>
                 <a class="btn btn-primary sm" href="feature-3.html">下一步：标题车间 →</a>
               </div>
             </div>
 
-            <div class="koc-skeleton">
-              <div class="koc-skeleton__time">0:00–0:05</div>
-              <div class="koc-skeleton__body">
-                <h4>Hook</h4>
-                <p>「越贵的护肤品成分越好？我给你看看专柜热销和 39 元成分表的对比——你绝对会被气笑。」</p>
-              </div>
+            <!-- 空状态：第 3 步未完成时显示 -->
+            <div class="koc-script-empty" data-koc-script-empty>
+              <div class="koc-script-empty__icon">🎬</div>
+              <h4>等待问答收敛</h4>
+              <p>
+                完成第 3 步的 3 道单选题后，本步会自动调用 AI 生成<b>完整可朗读的原创分镜脚本</b>，
+                <br />包含 Hook 开场 + 与骨架时间轴对齐的 Body 段落 + CTA 收尾，可一键复制。
+              </p>
             </div>
-            <div class="koc-skeleton">
-              <div class="koc-skeleton__time">0:05–1:20</div>
-              <div class="koc-skeleton__body">
-                <h4>Body · 闺蜜对话切入</h4>
-                <p>① 闺蜜来家试用 → ② 摊出 3 张成分表 → ③ 拆穿 1 个常见智商税 → ④ 给出「3 看 2 不看」原则。</p>
-              </div>
-            </div>
-            <div class="koc-skeleton">
-              <div class="koc-skeleton__time">1:20–1:55</div>
-              <div class="koc-skeleton__body">
-                <h4>CTA</h4>
-                <p>「你最近被什么平价好物惊艳过？把名字打在评论区，下期我做《打工人值得屯的 10 件》。」</p>
-              </div>
-            </div>
+
+            <!-- 真实脚本由 renderScript() 注入 -->
+            <div class="koc-script" data-koc-script-output hidden></div>
           </article>
         </section>
       </div>

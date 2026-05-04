@@ -667,6 +667,158 @@
   border-color: var(--primary);
 }
 
+.koc-qa__opt:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.koc-qa__opt:disabled:hover {
+  /* Once disabled, suppress hover so users see "decision frozen" feedback. */
+  background: var(--surface);
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.koc-qa__opt:disabled.is-selected:hover {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  opacity: 1;
+}
+
+/* === Q&A progress strip ===
+   3 columns mapped 1:1 to MAX_QA_ROUNDS so users always know how many turns remain.
+   .is-active = current round, .is-done = answered already. */
+.koc-qa__progress {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin-bottom: 0.25rem;
+}
+
+.koc-qa__progress-step {
+  text-align: center;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  color: var(--ink-mid);
+}
+
+.koc-qa__progress-step.is-active {
+  background: var(--primary-100);
+  border-color: var(--primary);
+  color: var(--primary-700);
+  font-weight: 600;
+}
+
+.koc-qa__progress-step.is-done {
+  background: var(--surface);
+  border-color: var(--success, #2ea44f);
+  color: var(--success, #2ea44f);
+}
+
+.koc-qa__rationale {
+  align-self: flex-start;
+  max-width: 75%;
+  font-size: 0.78rem;
+  color: var(--ink-mid);
+  background: transparent;
+  padding: 0 0.4rem;
+  margin-top: -0.3rem;
+}
+
+/* === Q&A empty state (before user clicks "开始问答") === */
+.koc-qa-empty,
+.koc-script-empty {
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  padding: 1.4rem 1.2rem;
+  text-align: center;
+  background: var(--bg-deep);
+}
+
+.koc-qa-empty__icon,
+.koc-script-empty__icon {
+  font-size: 1.8rem;
+  margin-bottom: 0.4rem;
+}
+
+.koc-qa-empty h4,
+.koc-script-empty h4 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  color: var(--ink);
+}
+
+.koc-qa-empty p,
+.koc-script-empty p {
+  margin: 0 0 0.8rem;
+  font-size: 0.85rem;
+  line-height: 1.65;
+  color: var(--ink-mid);
+}
+
+/* === Q&A history (后续轮次的"已确认决策"摘要) === */
+.koc-qa-history {
+  margin-top: 0.4rem;
+  padding: 0.75rem 0.95rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg-deep);
+}
+
+.koc-qa-history h5 {
+  margin: 0 0 0.5rem;
+  font-size: 0.82rem;
+  color: var(--ink-mid);
+  font-weight: 600;
+}
+
+.koc-qa-history ol {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.koc-qa-history li {
+  font-size: 0.84rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.koc-qa-history__choice {
+  display: inline-block;
+  margin-top: 0.2rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  background: var(--primary-100);
+  color: var(--primary-700);
+  font-size: 0.78rem;
+}
+
+/* === Final script output (复用 .koc-skeleton 卡片 + visual hint <em>) === */
+.koc-script {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.koc-script .koc-skeleton__body em {
+  display: block;
+  margin-top: 0.4rem;
+  font-style: normal;
+  font-size: 0.78rem;
+  color: var(--ink-mid);
+  background: var(--bg-deep);
+  padding: 0.35rem 0.6rem;
+  border-radius: 6px;
+  border-left: 2px solid var(--primary);
+}
+
 /* ===== 功能页 3：标题/标签输出网格 ===== */
 .koc-output-grid {
   display: grid;

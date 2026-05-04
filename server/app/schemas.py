@@ -155,6 +155,90 @@ class CommentsResponse(BaseModel):
 
 
 # =========================================================================
+# Module 5 — Guided Q&A (引导式问答)
+# =========================================================================
+# 设计哲学：
+#   feature-1 的第 3 步把"对标拆解"转化为"原创素材"——不是让 AI 替用户写，
+#   而是用 ≤ 3 轮纯选项题让用户做出 3 个关键创作决策（Hook 角度 / Body 切入 / CTA 风格）。
+#
+# 为什么不开放自由输入：
+#   早期方案曾保留「让我自己输入…」自由文本出口，但实测发现：
+#   1. 用户一旦写自由文本，对话很容易"发散"，下一轮问题失去锚点；
+#   2. LLM 把自由文本回填到下一轮 prompt 里时，会出现"重复确认"循环；
+#   3. v0.x 阶段优先保收敛、保产物质量，自由输入留到后续版本再做。
+#   所以现在 100% 是"AI 出 3-4 个具体可朗读选项 → 用户单选 → 进入下一轮"。
+#
+# 轮次约束：
+#   MAX_QA_ROUNDS = 3 —— 3 轮足以覆盖 Hook / Body 关键差异化 / CTA 三个核心维度，
+#   超过 3 轮用户就会失去耐心。Router 在 answers 数组长度 ≥ 3 时直接返回 done=true
+#   而不再调用 LLM——确定性收敛。
+MAX_QA_ROUNDS = 3
+
+
+class QAAnswer(BaseModel):
+    """已答轮次的回放（前端把累积历史回传给后端，让 AI 出下一题时知道前面选了什么）。"""
+
+    round: int = Field(..., ge=1, le=MAX_QA_ROUNDS)
+    question: str = Field(..., max_length=500)
+    choice: str = Field(..., min_length=1, max_length=500, description="用户选中的那个 option.label 文本")
+
+
+class QARequest(BaseModel):
+    """每一轮问答的请求体；前端在每次 /next 调用时回传完整 history。"""
+
+    skeleton: dict = Field(..., description="第 2 步生成的骨架（hook/body/cta）原样回传")
+    transcript: Optional[str] = Field(default=None, max_length=10000, description="原视频台词（可选，给 AI 补充上下文）")
+    persona_hint: Optional[str] = Field(default=None, max_length=500, description="当前人设")
+    answers: List[QAAnswer] = Field(default_factory=list, max_length=MAX_QA_ROUNDS)
+
+
+class QAOption(BaseModel):
+    """单选选项；不再有 freeform 出口，所有选项都是 AI 提前生成的可朗读具体内容。"""
+
+    label: str = Field(..., min_length=1, max_length=200)
+
+
+class QAResponse(BaseModel):
+    """单轮回复：要么是新一轮的题，要么是 done=True 进入脚本阶段。"""
+
+    round: int = Field(..., ge=1, le=MAX_QA_ROUNDS)
+    done: bool = Field(..., description="True 时前端跳到第 4 步生成脚本，忽略 question/options")
+    question: Optional[str] = Field(default=None, max_length=500)
+    rationale: Optional[str] = Field(default=None, max_length=300, description="给前端可选展示的『为什么问这个』")
+    options: List[QAOption] = Field(default_factory=list, max_length=4)
+    model_used: str
+    elapsed_ms: int
+
+
+# =========================================================================
+# Module 6 — Final Script (基于骨架 + Q&A 回答生成原创分镜脚本)
+# =========================================================================
+class ScriptRequest(BaseModel):
+    skeleton: dict = Field(..., description="第 2 步骨架原样回传")
+    answers: List[QAAnswer] = Field(default_factory=list, max_length=MAX_QA_ROUNDS)
+    persona_hint: Optional[str] = Field(default=None, max_length=500)
+    transcript: Optional[str] = Field(default=None, max_length=10000)
+
+
+class ScriptScene(BaseModel):
+    """脚本里一个分镜片段。结构刻意与 NarrativeBeat 对齐，方便前端复用 .koc-skeleton 卡片样式。"""
+
+    timestamp: str
+    title: str
+    narration: str = Field(..., description="该片段的具体口播文字（创作者可直接朗读）")
+    visual: Optional[str] = Field(default=None, max_length=500, description="画面/镜头建议")
+
+
+class ScriptResponse(BaseModel):
+    hook_narration: str = Field(..., max_length=500, description="开场 3 秒的口播台词")
+    scenes: List[ScriptScene] = Field(..., min_length=2, max_length=8)
+    cta_narration: str = Field(..., max_length=500)
+    full_text: str = Field(..., description="拼接后的完整脚本纯文本（供前端一键复制）")
+    model_used: str
+    elapsed_ms: int
+
+
+# =========================================================================
 # ASR — separate endpoint (only used by Module 1's frontend uploader)
 # =========================================================================
 class ASRResponse(BaseModel):

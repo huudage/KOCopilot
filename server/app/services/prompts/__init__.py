@@ -8,3 +8,5 @@ from .persona import PERSONA_SYSTEM_PROMPT  # noqa: F401
 from .skeleton import SKELETON_SYSTEM_PROMPT  # noqa: F401
 from .seo import SEO_SYSTEM_PROMPT  # noqa: F401
 from .comments import COMMENTS_SYSTEM_PROMPT  # noqa: F401
+from .qa import QA_SYSTEM_PROMPT  # noqa: F401
+from .script import SCRIPT_SYSTEM_PROMPT  # noqa: F401

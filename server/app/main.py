@@ -26,7 +26,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import __version__
 from .config import get_settings
-from .routers import asr, comments, persona, seo, skeleton
+from .routers import asr, comments, persona, qa, script, seo, skeleton
 from .schemas import ErrorResponse, HealthResponse
 
 
@@ -72,7 +72,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="KOCopilot API",
-        description="AI 副驾后端：人设生成、爆款拆解、SEO 元数据、评论分拣。",
+        description="AI 副驾后端：人设生成、爆款拆解、引导式问答、原创分镜脚本、SEO 元数据、评论分拣。",
         version=__version__,
         lifespan=lifespan,
         # Disable docs in production for a tiny security gain; enable locally.
@@ -143,6 +143,8 @@ def create_app() -> FastAPI:
 
     app.include_router(persona.router, prefix="/api/persona", tags=["persona"])
     app.include_router(skeleton.router, prefix="/api/skeleton", tags=["skeleton"])
+    app.include_router(qa.router, prefix="/api/qa", tags=["qa"])
+    app.include_router(script.router, prefix="/api/script", tags=["script"])
     app.include_router(seo.router, prefix="/api/seo", tags=["seo"])
     app.include_router(comments.router, prefix="/api/comments", tags=["comments"])
     app.include_router(asr.router, prefix="/api/asr", tags=["asr"])

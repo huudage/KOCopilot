@@ -131,6 +131,11 @@ class MockLLMClient(LLMClient):
         - "transferable_template"  -> skeleton module
         - "broad_traffic"          -> seo module
         - "low_value_count"        -> comments module
+        - "rationale"              -> qa module (round + question + options + done)
+        - "hook_narration"         -> script module (scenes + cta_narration + full_text)
+
+    Order matters when one prompt references another's field name in a hint;
+    keep the most specific fingerprint first.
     """
 
     name = "mock"
@@ -153,6 +158,10 @@ class MockLLMClient(LLMClient):
             return _MOCK_COMMENTS_JSON
         if "personas" in system:
             return _MOCK_PERSONA_JSON
+        if "hook_narration" in system:
+            return _MOCK_SCRIPT_JSON
+        if "rationale" in system:
+            return _MOCK_QA_JSON
         return '{"detail": "mock fallback"}'
 
 
@@ -381,5 +390,53 @@ _MOCK_COMMENTS_JSON = """
     {"author": "@路过", "text": "我用过你说的国货 真的便宜大碗 但是味道有点冲", "classification": "中价值", "replies": []}
   ],
   "low_value_count": 4
+}
+"""
+
+_MOCK_QA_JSON = """
+{
+  "round": 1,
+  "question": "原视频用『反常识陈述』钩住观众，结合你的人设，第一句你想用哪种角度？",
+  "rationale": "Hook 的角度决定 3 秒留存率，从最贴近你受众的反差入手最稳。",
+  "options": [
+    {"label": "数字反差：『同样护肤，专柜 599 vs 国货 39，结果意外得让你想骂人。』"},
+    {"label": "身份反差：『打工人月薪 8k，凭什么用得起大牌？我闺蜜的答案让我傻眼。』"},
+    {"label": "认知反差：『你以为成分越贵越好？我把 3 张成分表摊开，结果反过来了。』"}
+  ],
+  "done": false
+}
+"""
+
+_MOCK_SCRIPT_JSON = """
+{
+  "hook_narration": "你是不是也以为越贵的护肤品成分越好？等下你看完这 3 张成分表，可能会想立刻把购物车清空——专柜 599 元的爆款和 39 元国货放在一起，差距小到我都怀疑自己买错了几年。",
+  "scenes": [
+    {
+      "timestamp": "0:05-0:30",
+      "title": "暴露问题 · 成分表三连摊",
+      "narration": "我从我家梳妆台和闺蜜家的化妆台各拿了一瓶『打工人最常买』的精华，加上一瓶 39 元国货，三瓶并排摆在桌上，把成分表全部贴在白纸上——你看这一栏『烟酰胺 + 神经酰胺 + 透明质酸』，三瓶都有，浓度只差 1-2 个百分点。",
+      "visual": "镜头从三瓶产品平移到三张成分表，红笔圈出相同成分。"
+    },
+    {
+      "timestamp": "0:30-1:00",
+      "title": "提出 3 步法 · 看清成分党黑话",
+      "narration": "教你 3 步看穿『智商税』：第一步看成分表前 5，决定主要功效；第二步找浓度数字，没标的基本是噱头；第三步看防腐体系，便宜但不刺激的产品，这一步通常做得很扎实。",
+      "visual": "三个数字 1/2/3 跳出，每个对应桌上一个成分表特写。"
+    },
+    {
+      "timestamp": "1:00-1:30",
+      "title": "实拍演示 · 上脸效果对比",
+      "narration": "我让闺蜜左脸用 599 的，右脸用 39 的，2 周后我们再给你看真实素颜对比——剧透一下，肉眼几乎分不出，但她的钱包知道。",
+      "visual": "实拍闺蜜左右脸对比，下方字幕弹出『2 周实测』。"
+    },
+    {
+      "timestamp": "1:30-2:00",
+      "title": "用户自测 · 你买过哪一种？",
+      "narration": "你最近被什么平价好物惊艳过？或者你正在被哪个大牌智商税气到？把名字打在评论区，我会挑赞最高的 3 个，下期视频做长期使用对比。",
+      "visual": "屏幕弹出『#平价好物挑战』话题贴片。"
+    }
+  ],
+  "cta_narration": "如果你不想再被『成分党黑话』骗钱，关注我，下期《打工人值得屯的 10 件》正在做长期实测；觉得这个视频有用，点亮收藏，明天还能找到。",
+  "full_text": "【Hook · 0:00-0:03】你是不是也以为越贵的护肤品成分越好？等下你看完这 3 张成分表，可能会想立刻把购物车清空——专柜 599 元的爆款和 39 元国货放在一起，差距小到我都怀疑自己买错了几年。\\n\\n【暴露问题 · 成分表三连摊 · 0:05-0:30】我从我家梳妆台和闺蜜家的化妆台各拿了一瓶『打工人最常买』的精华，加上一瓶 39 元国货，三瓶并排摆在桌上，把成分表全部贴在白纸上——你看这一栏『烟酰胺 + 神经酰胺 + 透明质酸』，三瓶都有，浓度只差 1-2 个百分点。\\n\\n【提出 3 步法 · 看清成分党黑话 · 0:30-1:00】教你 3 步看穿『智商税』：第一步看成分表前 5，决定主要功效；第二步找浓度数字，没标的基本是噱头；第三步看防腐体系，便宜但不刺激的产品，这一步通常做得很扎实。\\n\\n【实拍演示 · 上脸效果对比 · 1:00-1:30】我让闺蜜左脸用 599 的，右脸用 39 的，2 周后我们再给你看真实素颜对比——剧透一下，肉眼几乎分不出，但她的钱包知道。\\n\\n【用户自测 · 你买过哪一种？ · 1:30-2:00】你最近被什么平价好物惊艳过？或者你正在被哪个大牌智商税气到？把名字打在评论区，我会挑赞最高的 3 个，下期视频做长期使用对比。\\n\\n【CTA · 收尾】如果你不想再被『成分党黑话』骗钱，关注我，下期《打工人值得屯的 10 件》正在做长期实测；觉得这个视频有用，点亮收藏，明天还能找到。"
 }
 """

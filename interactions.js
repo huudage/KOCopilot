@@ -49,19 +49,285 @@
     });
   }
 
-  function bindQAOptions() {
-    document.querySelectorAll(".koc-qa").forEach((qa) => {
-      qa.querySelectorAll(".koc-qa__opts").forEach((group) => {
-        group.addEventListener("click", (ev) => {
-          const target = ev.target;
-          if (!(target instanceof HTMLElement)) return;
-          if (!target.classList.contains("koc-qa__opt")) return;
-          group.querySelectorAll(".koc-qa__opt").forEach((opt) => {
-            opt.classList.remove("is-selected");
-          });
-          target.classList.add("is-selected");
+  // ============================================================================
+  // Module 5+6 — Guided Q&A flow + Final script generation
+  //
+  // State machine:
+  //   IDLE (panel not yet activated; "等待第 2 步骨架完成")
+  //     ↓  bindSkeletonForm 拆解成功后调用 KOCQAFlow.activate(skeleton, transcript)
+  //   READY (按钮 enabled 显示「开始 3 轮单选问答」)
+  //     ↓  用户点开始 → loadNextRound()
+  //   ROUND_N (1..3) — 调 /api/qa/next，渲染问题 + 选项
+  //     ↓  用户单击选项 → answers.push() → loadNextRound()
+  //   后端 done=true 时直接进入 DONE → 自动调 /api/script/generate
+  //   DONE — 第 4 步面板显示真实脚本，「复制纯文本」按钮启用
+  //
+  // 不开放 freeform 自由输入（避免对话发散，保 3 轮收敛）—— 所有选项都是
+  // /api/qa/next 返回的 LLM 生成可朗读内容，用户单选即可推进。
+  // ============================================================================
+  const KOCQAFlow = (function () {
+    const state = {
+      skeleton: null,
+      transcript: "",
+      personaHint: "",
+      answers: [], // [{round, question, choice}]
+      latest: null, // 最近一次 /api/qa/next 响应
+    };
+
+    function $(sel) { return document.querySelector(sel); }
+
+    function getPersonaHintFromHistory() {
+      // 取最新一次保存的人设方案的 name + differentiation 作为 persona_hint，
+      // 让 QA 与 Script 的 prompt 拥有人设上下文（提升输出贴合度）。
+      try {
+        const list = (window.KOCHistory && window.KOCHistory.listPersonas()) || [];
+        const latest = list[0];
+        if (!latest || !latest.personas || !latest.personas.length) return "";
+        const p = latest.personas[0];
+        return [p.name, p.differentiation].filter(Boolean).join(" · ");
+      } catch (_) { return ""; }
+    }
+
+    function activate(skeleton, transcript) {
+      state.skeleton = skeleton;
+      state.transcript = transcript || "";
+      state.personaHint = getPersonaHintFromHistory();
+      state.answers = [];
+      state.latest = null;
+
+      const startBtn = $('[data-koc-action="qa-start"]');
+      if (startBtn) {
+        startBtn.disabled = false;
+        startBtn.textContent = "开始 3 轮单选问答 →";
+        if (!startBtn.dataset.kocBound) {
+          startBtn.addEventListener("click", () => loadNextRound());
+          startBtn.dataset.kocBound = "1";
+        }
+      }
+      // Reset visible UI to "ready, not started"
+      const empty = $("[data-koc-qa-empty]");
+      const current = $("[data-koc-qa-current]");
+      const history = $("[data-koc-qa-history]");
+      if (empty) empty.hidden = false;
+      if (current) current.hidden = true;
+      if (history) {
+        history.hidden = true;
+        const list = history.querySelector("[data-koc-qa-history-list]");
+        if (list) list.innerHTML = "";
+      }
+      // Reset script panel back to empty state
+      const scriptEmpty = $("[data-koc-script-empty]");
+      const scriptOut = $("[data-koc-script-output]");
+      if (scriptEmpty) scriptEmpty.hidden = false;
+      if (scriptOut) {
+        scriptOut.hidden = true;
+        scriptOut.innerHTML = "";
+      }
+      const copyBtn = $('[data-koc-action="copy-script"]');
+      if (copyBtn) copyBtn.disabled = true;
+    }
+
+    async function loadNextRound() {
+      const empty = $("[data-koc-qa-empty]");
+      const current = $("[data-koc-qa-current]");
+      const questionEl = $("[data-koc-qa-question]");
+      const rationaleEl = $("[data-koc-qa-rationale]");
+      const optsEl = $("[data-koc-qa-opts]");
+      if (empty) empty.hidden = true;
+      if (current) current.hidden = false;
+      if (questionEl) questionEl.textContent = "AI 正在出题…";
+      if (rationaleEl) { rationaleEl.hidden = true; rationaleEl.textContent = ""; }
+      if (optsEl) optsEl.innerHTML = '<div class="koc-loading">AI 正在出题…</div>';
+
+      try {
+        const resp = await KOCApi.postJSON("/api/qa/next", {
+          skeleton: state.skeleton,
+          transcript: state.transcript || null,
+          persona_hint: state.personaHint || null,
+          answers: state.answers,
         });
+        state.latest = resp;
+        if (resp.done) {
+          if (current) current.hidden = true;
+          KOCApi.showToast("3 轮问答完成 · AI 正在生成原创脚本…", "success");
+          await generateScript();
+          return;
+        }
+        renderRound(resp);
+      } catch (e) {
+        if (optsEl) optsEl.innerHTML = '<div class="koc-loading" style="color:var(--danger)">' +
+          escapeHtml("出题失败：" + (e.message || "请重试")) + "</div>";
+        KOCApi.showToast(e.message || "QA 失败", "error");
+      }
+    }
+
+    function renderRound(resp) {
+      const questionEl = $("[data-koc-qa-question]");
+      const rationaleEl = $("[data-koc-qa-rationale]");
+      const optsEl = $("[data-koc-qa-opts]");
+      if (questionEl) questionEl.textContent = "第 " + resp.round + " 题 · " + (resp.question || "");
+      if (rationaleEl) {
+        if (resp.rationale) {
+          rationaleEl.textContent = "💡 " + resp.rationale;
+          rationaleEl.hidden = false;
+        } else {
+          rationaleEl.hidden = true;
+          rationaleEl.textContent = "";
+        }
+      }
+      // Update progress steps
+      document.querySelectorAll(".koc-qa__progress-step").forEach((el) => {
+        const step = parseInt(el.dataset.step, 10);
+        el.classList.toggle("is-active", step === resp.round);
+        el.classList.toggle("is-done", step < resp.round);
       });
+      // Render options
+      if (!optsEl) return;
+      optsEl.innerHTML = "";
+      (resp.options || []).forEach((opt) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "koc-qa__opt";
+        btn.textContent = opt.label;
+        btn.addEventListener("click", () => onPick(resp, opt.label, btn));
+        optsEl.appendChild(btn);
+      });
+    }
+
+    function onPick(roundResp, choiceLabel, clickedBtn) {
+      // 立刻禁用所有选项防重复点击；高亮选中的那个
+      const optsEl = $("[data-koc-qa-opts]");
+      if (optsEl) {
+        optsEl.querySelectorAll(".koc-qa__opt").forEach((b) => {
+          b.disabled = true;
+          b.classList.remove("is-selected");
+        });
+      }
+      if (clickedBtn) clickedBtn.classList.add("is-selected");
+
+      state.answers.push({
+        round: roundResp.round,
+        question: roundResp.question || "",
+        choice: choiceLabel,
+      });
+      appendHistory(roundResp.round, roundResp.question, choiceLabel);
+      // 紧接下一轮（loading by loadNextRound 自身）
+      setTimeout(loadNextRound, 200);
+    }
+
+    function appendHistory(round, question, choice) {
+      const history = $("[data-koc-qa-history]");
+      const list = $("[data-koc-qa-history-list]");
+      if (!history || !list) return;
+      history.hidden = false;
+      const li = document.createElement("li");
+      li.innerHTML =
+        '<b>第 ' + round + ' 题</b> · ' + escapeHtml(question || "") +
+        '<br/><span class="koc-qa-history__choice">✓ ' + escapeHtml(choice) + '</span>';
+      list.appendChild(li);
+    }
+
+    async function generateScript() {
+      const scriptEmpty = $("[data-koc-script-empty]");
+      const scriptOut = $("[data-koc-script-output]");
+      const copyBtn = $('[data-koc-action="copy-script"]');
+      if (scriptEmpty) scriptEmpty.hidden = true;
+      if (scriptOut) {
+        scriptOut.hidden = false;
+        scriptOut.innerHTML = '<div class="koc-loading">AI 正在生成原创分镜脚本…</div>';
+      }
+
+      try {
+        const resp = await KOCApi.postJSON("/api/script/generate", {
+          skeleton: state.skeleton,
+          answers: state.answers,
+          persona_hint: state.personaHint || null,
+          transcript: state.transcript || null,
+        });
+        renderScript(resp);
+        if (copyBtn) {
+          copyBtn.disabled = false;
+          copyBtn.dataset.fullText = resp.full_text || "";
+        }
+        KOCApi.showToast("脚本生成完成 · 用时 " + resp.elapsed_ms + "ms", "success");
+      } catch (e) {
+        if (scriptOut) {
+          scriptOut.innerHTML = '<div class="koc-loading" style="color:var(--danger)">' +
+            escapeHtml("脚本生成失败：" + (e.message || "请重试")) + "</div>";
+        }
+        KOCApi.showToast(e.message || "脚本生成失败", "error");
+      }
+    }
+
+    function renderScript(data) {
+      const scriptOut = $("[data-koc-script-output]");
+      if (!scriptOut) return;
+      const parts = [];
+      // Hook
+      parts.push(
+        '<div class="koc-skeleton">' +
+          '<div class="koc-skeleton__time">0:00–0:03</div>' +
+          '<div class="koc-skeleton__body">' +
+          "<h4>Hook · 开场口播</h4>" +
+          "<p>" + escapeHtml(data.hook_narration || "") + "</p>" +
+          "</div></div>"
+      );
+      // Scenes
+      (data.scenes || []).forEach((s) => {
+        parts.push(
+          '<div class="koc-skeleton">' +
+            '<div class="koc-skeleton__time">' + escapeHtml(s.timestamp || "-") + "</div>" +
+            '<div class="koc-skeleton__body">' +
+            "<h4>" + escapeHtml(s.title || "Scene") + "</h4>" +
+            "<p>" + escapeHtml(s.narration || "") + "</p>" +
+            (s.visual ? "<em>📷 " + escapeHtml(s.visual) + "</em>" : "") +
+            "</div></div>"
+        );
+      });
+      // CTA
+      parts.push(
+        '<div class="koc-skeleton">' +
+          '<div class="koc-skeleton__time">收尾</div>' +
+          '<div class="koc-skeleton__body">' +
+          "<h4>CTA · 行动呼吁</h4>" +
+          "<p>" + escapeHtml(data.cta_narration || "") + "</p>" +
+          "</div></div>"
+      );
+      scriptOut.innerHTML = parts.join("");
+    }
+
+    return { activate: activate };
+  })();
+  // Expose so asr-uploader (separate script) can also re-trigger if needed.
+  window.KOCQAFlow = KOCQAFlow;
+
+  function bindCopyScript() {
+    const btn = document.querySelector('[data-koc-action="copy-script"]');
+    if (!btn) return;
+    btn.addEventListener("click", async () => {
+      const text = btn.dataset.fullText || "";
+      if (!text) {
+        KOCApi.showToast("还没有可复制的脚本，请先完成第 3 步问答。", "error");
+        return;
+      }
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          // Fallback for non-secure contexts (rare in production)
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand("copy");
+          document.body.removeChild(ta);
+        }
+        KOCApi.showToast("已复制脚本（" + text.length + " 字）到剪贴板", "success");
+      } catch (e) {
+        KOCApi.showToast("复制失败：" + (e.message || "浏览器拒绝"), "error");
+      }
     });
   }
 
@@ -251,6 +517,11 @@
         renderSkeleton(skeletonPanel, placeholder, resp);
         if (window.KOCHistory && typeof window.KOCHistory.saveSkeleton === "function") {
           try { window.KOCHistory.saveSkeleton(resp, transcript); } catch (_) {}
+        }
+        // 拆解成功 → 激活第 3 步引导式问答（不自动出题，用户需点「开始」按钮，
+        // 这样即使再次拆解也不会打断对话）
+        if (window.KOCQAFlow) {
+          try { window.KOCQAFlow.activate(resp, transcript); } catch (_) {}
         }
         KOCApi.showToast("拆解完成 · 用时 " + resp.elapsed_ms + "ms · 已存入工作台", "success");
       } catch (e) {
@@ -576,7 +847,7 @@
   // ============================================================================
   document.addEventListener("DOMContentLoaded", () => {
     bindCopyButtons();
-    bindQAOptions();
+    bindCopyScript();
     bindUploader();
     bindInputTabs();
 
