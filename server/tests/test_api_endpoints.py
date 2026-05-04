@@ -78,6 +78,28 @@ def test_seo_titles(client):
     assert "broad_traffic" in body["tags"]
 
 
+def test_seo_titles_default_platform(client):
+    """`platform` is optional; default must be douyin."""
+    r = client.post(
+        "/api/seo/titles",
+        json={"script": "今天聊聊护肤成分党的智商税，3 张成分表对比一下。"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["platform"] == "douyin"
+
+
+def test_seo_titles_rejects_other_platforms(client):
+    """Non-douyin platform must be rejected by the Literal schema."""
+    r = client.post(
+        "/api/seo/titles",
+        json={
+            "script": "今天聊聊护肤成分党的智商税，3 张成分表对比一下。",
+            "platform": "xiaohongshu",
+        },
+    )
+    assert r.status_code == 422, r.text
+
+
 def test_comments_classify(client):
     raw = (
         "@小麦：博主3看2不看的原则我特别想知道更细节的\n"

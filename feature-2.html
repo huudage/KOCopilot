@@ -19,14 +19,14 @@
       <div class="koc-topbar__inner">
         <a class="koc-brand" href="index.html">KOCopilot</a>
         <nav class="koc-nav" aria-label="主功能">
-          <a href="index.html">工作台</a>
-          <a href="feature-1.html">爆款拆解</a>
+          <a href="workspace.html">工作台</a>
           <a href="feature-2.html" aria-current="page">人设生成</a>
+          <a href="feature-1.html">爆款拆解</a>
           <a href="feature-3.html">标题车间</a>
           <a href="feature-4.html">评论分拣</a>
         </nav>
         <div class="koc-nav koc-nav--muted">
-          <a href="landing.html">产品说明</a>
+          <a href="index.html">产品说明</a>
         </div>
       </div>
     </header>
@@ -68,7 +68,7 @@
           <button class="btn btn-primary" type="button">生成 3 个人设方案</button>
           <button class="btn btn-ghost" type="button">换一批</button>
           <span style="font-size: 0.78rem; color: var(--ink-muted); align-self: center;">
-            · v0.1：每次生成都会调用真 AI，注意 Key 余额
+            · 每次生成都会调用真 AI，注意 Key 余额
           </span>
         </div>
       </article>
@@ -133,14 +133,20 @@
       </div>
 
       <div class="koc-disclaimer">
-        <b>说明：</b>方案中的对标账号仅为示意，无需对号入座。点击采用某个方案后，工作台首页将自动绑定该人设上下文，后续模块（拆解、标题车间、评论分拣）会按该人设语气生成。
+        <b>说明：</b>方案中的对标账号仅为示意，无需对号入座。生成成功后会自动保存到工作台「我的人设」看板，后续可在拆解、标题车间、评论分拣中按该人设语气生成。
       </div>
+
+      <p style="margin-top:1.5rem; text-align:center;">
+        <a class="btn btn-ghost" href="workspace.html">← 返回工作台</a>
+        <a class="btn btn-primary" href="feature-1.html" style="margin-left:0.6rem;">下一步：爆款拆解 →</a>
+      </p>
     </main>
 
     <footer class="koc-footer">
-      KOCopilot · MVP · <a href="landing.html">产品说明</a>
+      KOCopilot · 创作者智能副驾 · <a href="index.html">产品说明</a>
     </footer>
     <script src="api.js" defer></script>
+    <script src="koc-history.js" defer></script>
     <script src="interactions.js" defer></script>
   </body>
 </html>

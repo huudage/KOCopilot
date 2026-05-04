@@ -875,3 +875,40 @@
 .koc-disclaimer b {
   color: var(--primary-700);
 }
+
+/* ===== 工作台：历史看板（人设 / 拆解记录） ===== */
+.koc-history-empty {
+  display: block !important;
+  grid-template-columns: none !important;
+  padding: 0.85rem 1rem !important;
+  background: var(--bg-deep) !important;
+  border: 1px dashed var(--line-strong) !important;
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.koc-history-empty a {
+  color: var(--primary-700);
+  font-weight: 600;
+  margin-left: 0.3rem;
+}
+
+.koc-history-del {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  transition: background 120ms, color 120ms;
+}
+
+.koc-history-del:hover {
+  background: rgba(220, 38, 38, 0.08);
+  color: var(--danger, #dc2626);
+}
+

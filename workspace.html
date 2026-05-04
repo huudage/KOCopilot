@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>工作台 — KOCopilot</title>
+    <meta
+      name="description"
+      content="人设生成、爆款拆解、标题包装、评论分拣 一站式 AI 创作工作台。"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="app-screens.css" />
+  </head>
+  <body>
+    <header class="koc-topbar" role="banner">
+      <div class="koc-topbar__inner">
+        <a class="koc-brand" href="index.html">KOCopilot</a>
+        <nav class="koc-nav" aria-label="主功能">
+          <a href="workspace.html" aria-current="page">工作台</a>
+          <a href="feature-2.html">人设生成</a>
+          <a href="feature-1.html">爆款拆解</a>
+          <a href="feature-3.html">标题车间</a>
+          <a href="feature-4.html">评论分拣</a>
+        </nav>
+        <div class="koc-nav koc-nav--muted">
+          <a href="index.html">产品说明</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main" aria-label="工作台">
+      <header class="koc-hero">
+        <h1>让一个人，干出一个 <em>MCN 团队</em>的产出。</h1>
+        <p class="koc-lead">
+          先定位你的差异化人设 → 拆解对标爆款骨架 → 引导生成原创脚本 → 一键生成发布元数据 → 评论区智能回复。建议从「人设生成」开始。
+        </p>
+      </header>
+
+      <section class="koc-stat-grid" aria-label="数据概览">
+        <div class="koc-stat">
+          <p class="koc-stat__k">本周拆解任务</p>
+          <p class="koc-stat__v" data-kpi="skeletons-week">—</p>
+          <p class="koc-stat__meta">最近 7 天累计</p>
+        </div>
+        <div class="koc-stat">
+          <p class="koc-stat__k">已生成人设</p>
+          <p class="koc-stat__v" data-kpi="personas-total">—</p>
+          <p class="koc-stat__meta">累计差异化方案</p>
+        </div>
+        <div class="koc-stat">
+          <p class="koc-stat__k">待回复评论</p>
+          <p class="koc-stat__v">—</p>
+          <p class="koc-stat__meta">运营接入后展示</p>
+        </div>
+        <div class="koc-stat">
+          <p class="koc-stat__k">累计节省工时</p>
+          <p class="koc-stat__v" data-kpi="hours-saved">—</p>
+          <p class="koc-stat__meta">按 1 次拆解 ≈ 节省 2h 估算</p>
+        </div>
+      </section>
+
+      <h2 class="koc-sec-title">推荐工作流</h2>
+      <p class="koc-sec-sub">建议按顺序操作：先做人设定位，再用爆款拆解填充内容。</p>
+
+      <div class="koc-entries" role="list">
+        <a class="koc-entry koc-entry--primary" href="feature-2.html" role="listitem">
+          <span class="koc-entry__tag">第一步</span>
+          <h3 class="koc-entry__title">AI 人设生成</h3>
+          <p class="koc-entry__p">
+            输入背景、兴趣与可用资源，AI 直接生成 3 个差异化人设方案与起号建议——开始任何创作前的必经第一步。
+          </p>
+          <span class="koc-entry__cta">开始生成</span>
+        </a>
+        <a class="koc-entry" href="feature-1.html" role="listitem">
+          <span class="koc-entry__tag">第二步</span>
+          <h3 class="koc-entry__title">爆款逆向拆解 · 脚本引擎</h3>
+          <p class="koc-entry__p">
+            上传对标爆款视频，AI 自动提取 Hook / 节奏 / CTA 骨架，再用引导式问答生成属于你人设的原创分镜脚本。
+          </p>
+          <span class="koc-entry__cta">开始拆解</span>
+        </a>
+        <a class="koc-entry" href="feature-3.html" role="listitem">
+          <span class="koc-entry__tag">第三步</span>
+          <h3 class="koc-entry__title">标题与标签车间</h3>
+          <p class="koc-entry__p">
+            脚本一键转 5 个备选标题、视频简介与标签矩阵（泛流量 + 精准长尾），针对抖音算法优化。
+          </p>
+          <span class="koc-entry__cta">开始包装</span>
+        </a>
+        <a class="koc-entry" href="feature-4.html" role="listitem">
+          <span class="koc-entry__tag">第四步</span>
+          <h3 class="koc-entry__title">评论分拣 · 互动副驾</h3>
+          <p class="koc-entry__p">
+            粘贴评论区文本，AI 过滤灌水、识别高价值提问，并提供专业 / 幽默 / 共情三种语气回复草案。
+          </p>
+          <span class="koc-entry__cta">开始分拣</span>
+        </a>
+      </div>
+
+      <div class="koc-board-row" aria-label="历史项目">
+        <section class="koc-board" aria-labelledby="board-personas">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+            <h2 id="board-personas">我的人设方案</h2>
+            <a href="feature-2.html" class="btn btn-ghost sm">+ 生成新人设</a>
+          </div>
+          <p class="koc-board__sub">由「AI 人设生成」生成的差异化定位备选；本地保存，仅在此浏览器可见。</p>
+          <ul class="koc-list" data-history-list="personas">
+            <li class="koc-history-empty">还没有人设方案。<a href="feature-2.html">先生成一组 →</a></li>
+          </ul>
+        </section>
+
+        <section class="koc-board" aria-labelledby="board-skeletons">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+            <h2 id="board-skeletons">我的拆解项目</h2>
+            <a href="feature-1.html" class="btn btn-ghost sm">+ 新建拆解</a>
+          </div>
+          <p class="koc-board__sub">由「爆款逆向拆解」生成的 Hook / Body / CTA 骨架；本地保存。</p>
+          <ul class="koc-list" data-history-list="skeletons">
+            <li class="koc-history-empty">还没有拆解项目。<a href="feature-1.html">上传对标视频 →</a></li>
+          </ul>
+        </section>
+      </div>
+    </main>
+
+    <footer class="koc-footer">
+      KOCopilot · 创作者智能副驾 ·
+      <a href="index.html">产品说明</a>
+    </footer>
+    <script src="api.js" defer></script>
+    <script src="koc-history.js" defer></script>
+    <script src="interactions.js" defer></script>
+  </body>
+</html>

@@ -11,7 +11,7 @@
   "use strict";
 
   // ============================================================================
-  // Cosmetics (kept from v0 demo; still useful)
+  // Cosmetics — copy buttons / QA option toggles / drop-zone affordances.
   // ============================================================================
   function bindCopyButtons() {
     const candidates = document.querySelectorAll(
@@ -84,24 +84,8 @@
         dropzone.classList.remove("is-drag");
       })
     );
-    dropzone.addEventListener("drop", () => {
-      const hint = dropzone.querySelector(".koc-uploader__hint");
-      if (hint) hint.textContent = "演示模式：v0.1 暂不支持上传，请直接粘贴台词到下面的文本框。";
-    });
-  }
-
-  function bindPlatformTabs() {
-    const groups = document.querySelectorAll(".koc-panel__head");
-    groups.forEach((g) => {
-      const tabs = g.querySelectorAll('.btn.btn-ghost.sm[type="button"]');
-      if (tabs.length < 3) return;
-      tabs.forEach((tab) => {
-        tab.addEventListener("click", () => {
-          tabs.forEach((t) => t.setAttribute("aria-pressed", "false"));
-          tab.setAttribute("aria-pressed", "true");
-        });
-      });
-    });
+    // The actual upload + ASR pipeline is wired up in asr-uploader.js;
+    // this handler is purely for the drag-enter visual affordance.
   }
 
   // ============================================================================
@@ -154,8 +138,13 @@
       try {
         const resp = await KOCApi.postJSON("/api/persona/generate", body);
         renderPersonas(personasContainer, resp.personas || []);
+        // Persist into the workspace history board (best-effort; ignores if
+        // KOCHistory is not loaded on this page or storage quota is full).
+        if (window.KOCHistory && typeof window.KOCHistory.savePersonas === "function") {
+          try { window.KOCHistory.savePersonas(resp.personas || [], body); } catch (_) {}
+        }
         KOCApi.showToast(
-          "已生成 " + (resp.personas || []).length + " 个方案 · 用时 " + resp.elapsed_ms + "ms",
+          "已生成 " + (resp.personas || []).length + " 个方案 · 用时 " + resp.elapsed_ms + "ms · 已存入工作台",
           "success"
         );
       } catch (e) {
@@ -209,7 +198,7 @@
       block.style.marginTop = "0.8rem";
       block.innerHTML =
         '<label for="koc-transcript-input" style="display:block; font-size:0.85rem; color: var(--ink-muted); margin-bottom: 0.3rem;">' +
-        "v0.1 输入：直接把视频台词文本粘贴到下方（含/不含时间戳均可）。" +
+        "或直接把视频台词文本粘贴到下方（含 / 不含时间戳均可）。" +
         "</label>" +
         '<textarea id="koc-transcript-input" data-koc-transcript class="koc-comment-input" rows="6" ' +
         'placeholder="例如：[00:00] 90% 的人冰箱都用错了... [00:30] 三步法..."></textarea>' +
@@ -249,7 +238,10 @@
       try {
         const resp = await KOCApi.postJSON("/api/skeleton/extract", { transcript: transcript });
         renderSkeleton(skeletonPanel, placeholder, resp);
-        KOCApi.showToast("拆解完成 · 用时 " + resp.elapsed_ms + "ms", "success");
+        if (window.KOCHistory && typeof window.KOCHistory.saveSkeleton === "function") {
+          try { window.KOCHistory.saveSkeleton(resp, transcript); } catch (_) {}
+        }
+        KOCApi.showToast("拆解完成 · 用时 " + resp.elapsed_ms + "ms · 已存入工作台", "success");
       } catch (e) {
         placeholder.classList.remove("koc-loading");
         placeholder.className = "koc-loading";
@@ -332,32 +324,18 @@
     const tagsPanel = tagsSection ? tagsSection.nextElementSibling.nextElementSibling : null;
     // tagsSection -> sec-sub -> panel; we walk two siblings.
 
-    function getActivePlatform() {
-      const tabs = document.querySelectorAll(
-        ".koc-panel__head .btn.btn-ghost.sm[type='button']"
-      );
-      for (const t of tabs) {
-        if (t.getAttribute("aria-pressed") === "true") {
-          const txt = (t.textContent || "").trim();
-          if (/小红书/.test(txt)) return "xiaohongshu";
-          if (/视频号/.test(txt)) return "wechat_video";
-          if (/B 站|B站/.test(txt)) return "bilibili";
-          return "douyin";
-        }
-      }
-      return "douyin";
-    }
-
     generateBtn.addEventListener("click", async () => {
       const script = (textarea.value || "").trim();
       if (script.length < 20) {
         KOCApi.showToast("脚本至少 20 字。", "error");
         return;
       }
-      const body = { script: script, platform: getActivePlatform() };
+      // Platform is fixed to douyin in this version (the picker UI was
+      // removed). The backend still accepts the field for forward-compat.
+      const body = { script: script, platform: "douyin" };
 
       KOCApi.setLoading(generateBtn, true, "生成中…");
-      if (titlesContainer) setBusy(titlesContainer, "AI 正在为「" + body.platform + "」生成标题…");
+      if (titlesContainer) setBusy(titlesContainer, "AI 正在按抖音算法生成标题…");
       try {
         const resp = await KOCApi.postJSON("/api/seo/titles", body);
         renderSeoTitles(titlesContainer, resp.titles || []);
@@ -539,7 +517,6 @@
     bindCopyButtons();
     bindQAOptions();
     bindUploader();
-    bindPlatformTabs();
 
     bindPersonaForm();
     bindSkeletonForm();

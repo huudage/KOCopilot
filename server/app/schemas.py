@@ -91,8 +91,16 @@ class SkeletonResponse(BaseModel):
 # Module 3 — SEO / Metadata
 # =========================================================================
 class SEORequest(BaseModel):
+    """Module 3 request payload.
+
+    `platform` is currently locked to "douyin" (the multi-platform picker was
+    removed from the UI). The field is kept (instead of dropped) so older
+    clients that still send `platform=douyin` keep working, and so we have a
+    forward-compat seam for future platform-specific prompt files.
+    """
+
     script: str = Field(..., min_length=20, max_length=10000)
-    platform: Literal["douyin", "xiaohongshu", "wechat_video", "bilibili"] = "douyin"
+    platform: Literal["douyin"] = "douyin"
     persona_hint: Optional[str] = Field(default=None, max_length=500)
 
 

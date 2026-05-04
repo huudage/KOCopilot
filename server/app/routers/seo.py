@@ -22,7 +22,9 @@ async def generate_titles(req: SEORequest, request: Request) -> SEOResponse:
     started = time.perf_counter()
 
     persona_block = f"\n【当前人设上下文】{req.persona_hint}" if req.persona_hint else ""
-    user_msg = f"【目标平台】{req.platform}\n【脚本/口播稿】\n{req.script}{persona_block}"
+    # Platform is locked to douyin (Literal), so we don't echo it into the
+    # prompt — the system prompt is already tuned for douyin specifically.
+    user_msg = f"【脚本/口播稿】\n{req.script}{persona_block}"
 
     client = get_llm_client()
     try:

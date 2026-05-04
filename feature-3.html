@@ -19,39 +19,34 @@
       <div class="koc-topbar__inner">
         <a class="koc-brand" href="index.html">KOCopilot</a>
         <nav class="koc-nav" aria-label="主功能">
-          <a href="index.html">工作台</a>
-          <a href="feature-1.html">爆款拆解</a>
+          <a href="workspace.html">工作台</a>
           <a href="feature-2.html">人设生成</a>
+          <a href="feature-1.html">爆款拆解</a>
           <a href="feature-3.html" aria-current="page">标题车间</a>
           <a href="feature-4.html">评论分拣</a>
         </nav>
         <div class="koc-nav koc-nav--muted">
-          <a href="landing.html">产品说明</a>
+          <a href="index.html">产品说明</a>
         </div>
       </div>
     </header>
 
     <main id="main">
       <header class="koc-hero">
-        <span class="koc-badge">模块三 · 长尾 SEO</span>
+        <span class="koc-badge">长尾 SEO · 抖音算法优化</span>
         <h1>标题与<em>标签车间</em></h1>
         <p class="koc-lead">
-          创作完已无力做发布？把刚生成的脚本喂进来，自动产出 5 个标题、视频简介与标签矩阵。<b>30 秒搞定 30 分钟的发布工作。</b>
+          创作完已无力做发布？把刚生成的脚本喂进来，针对抖音算法自动产出 5 个标题、视频简介与标签矩阵。<b>30 秒搞定 30 分钟的发布工作。</b>
         </p>
       </header>
 
       <article class="koc-panel">
         <div class="koc-panel__head">
           <div>
-            <h2>1. 输入脚本与目标平台</h2>
-            <p>切换平台会让 AI 调整 Hook 风格与标签密度。</p>
+            <h2>1. 输入脚本</h2>
+            <p>AI 会按抖音算法的 Hook 前置、强情绪、标签密度规则生成。</p>
           </div>
-          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <button class="btn btn-ghost sm" type="button" aria-pressed="true">抖音</button>
-            <button class="btn btn-ghost sm" type="button">小红书</button>
-            <button class="btn btn-ghost sm" type="button">视频号</button>
-            <button class="btn btn-ghost sm" type="button">B 站</button>
-          </div>
+          <span class="koc-pill">抖音格式</span>
         </div>
 
         <textarea class="koc-comment-input" rows="6" aria-label="脚本输入">
@@ -155,14 +150,15 @@
       </article>
 
       <div class="koc-disclaimer">
-        <b>平台差异化：</b>切换至小红书会让 AI 调整为 emoji 前置、关键词加密；视频号偏自然语句；B 站偏书名号与信息密度。
+        <b>抖音算法适配：</b>AI 已按抖音的 Hook 前置（前 3 秒钩子）、强情绪标题词、3-5 个泛流量标签 + 5-8 个精准长尾标签的密度规则生成；其他平台暂未支持。
       </div>
     </main>
 
     <footer class="koc-footer">
-      KOCopilot · MVP · <a href="landing.html">产品说明</a>
+      KOCopilot · 创作者智能副驾 · <a href="index.html">产品说明</a>
     </footer>
     <script src="api.js" defer></script>
+    <script src="koc-history.js" defer></script>
     <script src="interactions.js" defer></script>
   </body>
 </html>

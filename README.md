@@ -1,24 +1,37 @@
-# KOCopilot · 创作者智能副驾（v0.1：前端 + FastAPI 后端）
+# KOCopilot · 创作者智能副驾
 
 > 让一个人，干出一个 MCN 团队的产出。
-> v0.1 已从纯静态 demo 升级为**前后端一体的 MVP**：FastAPI 提供 4 个 AI 端点，同进程服务静态前端。
+> 前端 + FastAPI 后端一体；4 个 AI 端点同进程服务静态前端。
 > 默认 `LLM_PROVIDER=mock`，**不配 API Key 也能跑全流程**；填入 DeepSeek Key 后即用真模型。
 
 ---
 
 ## 1. 这是什么
 
-KOCopilot 把"爆款拆解 → 人设定位 → 长尾分发 → 互动运营"四大 MCN 编导能力封装成 4 个一键操作的 AI 工作台。
+KOCopilot 把"人设定位 → 内容生产 → 长尾分发 → 互动运营"四大 MCN 编导能力封装成端到端 AI 工作流。**爆款拆解作为「内容生产」的核心实现手段嵌入工作流**，不再单独作为对外卖点。
 
-### 1.1 仓库结构
+### 1.1 用户旅程
+
+1. **首页（产品说明）** `index.html` — 介绍价值主张、痛点、四步工作流、三大对外能力，强 CTA 引导进入工作台。
+2. **工作台** `workspace.html` — 推荐工作流卡片（人设 → 拆解 → 标题车间 → 评论分拣），加「我的人设」「我的拆解项目」两个本地历史看板（localStorage）。
+3. **四个功能页**：
+   - `feature-2.html` 人设生成（**第一步**，每次创作的起点）
+   - `feature-1.html` 爆款拆解 + 脚本引擎
+   - `feature-3.html` 标题车间（**仅抖音**，去除多平台切换）
+   - `feature-4.html` 评论分拣
+
+### 1.2 仓库结构
 
 ```
 koc-copilot/
-├── index.html / landing.html          # 工作台 + 产品长页
+├── index.html                         # 首页（产品说明 / 落地页）
+├── workspace.html                     # 工作台（含 localStorage 历史看板）
 ├── feature-1.html ~ feature-4.html    # 4 个功能页
 ├── styles.css / app-screens.css       # 全站样式（CSS 变量 = 单点换皮）
 ├── api.js                             # 前端 API 客户端（fetch / loading / toast）
 ├── interactions.js                    # 4 个表单的提交-渲染逻辑
+├── koc-history.js                     # localStorage 历史 + 工作台看板渲染
+├── asr-uploader.js                    # ffmpeg.wasm 抽轨 + 调用后端 ASR
 ├── run.ps1 / run.sh                   # 启动 uvicorn FastAPI（含 venv 自举 + pip 安装）
 ├── stop.ps1 / stop.sh                 # 优雅停止
 ├── server/                            # 后端代码
@@ -26,36 +39,39 @@ koc-copilot/
 │   │   ├── main.py                    # FastAPI 入口（路由 + 中间件 + 静态挂载）
 │   │   ├── config.py                  # Pydantic Settings（读取 .env）
 │   │   ├── schemas.py                 # 所有请求/响应 Pydantic 模型
-│   │   ├── routers/                   # 4 个业务端点
+│   │   ├── routers/                   # 4 个业务端点 + ASR
 │   │   │   ├── persona.py             # POST /api/persona/generate
 │   │   │   ├── skeleton.py            # POST /api/skeleton/extract
-│   │   │   ├── seo.py                 # POST /api/seo/titles
-│   │   │   └── comments.py            # POST /api/comments/classify
+│   │   │   ├── seo.py                 # POST /api/seo/titles  （platform 锁定 douyin）
+│   │   │   ├── comments.py            # POST /api/comments/classify
+│   │   │   └── asr.py                 # POST /api/asr/transcribe (火山豆包 Flash)
 │   │   └── services/
 │   │       ├── llm_client.py          # LLMClient 抽象 + Mock + DeepSeek 实现
-│   │       ├── asr_client.py          # ASRClient 抽象 + Mock + Paraformer 骨架
+│   │       ├── asr_client.py          # ASRClient 抽象 + Mock + 火山豆包 Flash 实现
 │   │       └── prompts/               # 4 个模块的 system prompt 模板
-│   ├── tests/                         # 26 个 pytest 单元 + 集成测试
+│   ├── tests/                         # pytest 单元 + 集成测试（37 通过）
 │   ├── requirements.txt               # 生产依赖
-│   ├── requirements-dev.txt           # 含 pytest 等
-│   └── .env.example                   # 复制为 .env 后填入 DeepSeek Key
+│   └── .env.example                   # 复制为 .env 后填入 DeepSeek + 豆包 Key
 ├── deploy/
 │   ├── kocopilot-server.service       # systemd 单元（占位符 → sed 替换）
 │   └── nginx.conf.example             # nginx 站点配置（占位符 → sed 替换）
 ├── scripts/
-│   └── deploy.sh                      # 备份 → git pull → 重启 → 健康检查 → 失败回滚
-├── docs/PRD.md                        # 产品需求文档（v1 历史档，未跟随 v0.1 同步）
+│   ├── deploy.sh                      # 备份 → git pull → 重启 → 健康检查 → 失败回滚
+│   ├── install-on-medi-server.sh      # 一键在已有服务器上落地
+│   └── push-to-github.ps1 / .cmd      # 安全推送（含 secret 扫描 + cwd 守卫）
+├── docs/PRD.md                        # 产品需求文档（历史档，结构基本沿用）
 └── README.md                          # 本文件
 ```
 
-### 1.2 v0.1 与原 demo 的差异
+### 1.3 推荐工作流
 
-| 项 | v0.1 之前（纯静态 demo） | v0.1 现在 |
-|---|---|---|
-| 服务进程 | `python -m http.server` | `uvicorn app.main:app`（FastAPI） |
-| AI 调用 | 无 | 真调 DeepSeek（也可切 mock） |
-| 4 个模块 | 静态展示文本 | 真请求 → 真 AI → 渲染回页面 |
-| 部署 | 直接拷文件 | systemd + nginx + Let's Encrypt（同慢病项目） |
+```
+①人设生成 (feature-2)        ② 爆款拆解 (feature-1)        ③标题车间 (feature-3)        ④评论分拣 (feature-4)
+   ↓ 生成 3 个差异化方案       ↓ ASR 抽轨 + DeepSeek 拆骨架   ↓ 抖音算法标题/简介/标签       ↓ 高/中/低分拣 + 三种语气回复
+   存入 localStorage          存入 localStorage              （结果不入库，按需复制）       （结果不入库，按需复制）
+```
+
+工作台首页的「我的人设」「我的拆解项目」两块看板会自动展示这两类历史，纯前端 localStorage，仅当前浏览器可见，最多保留 30 条；不需要后端表，也无需登录。
 
 ---
 
