@@ -78,18 +78,38 @@ class LLMClient(ABC):
         Many providers (DeepSeek included) honor a system instruction "respond with
         valid JSON only" much better than free-form prompts. We retry once if the
         first reply isn't parseable JSON, asking the model to return JSON only.
+
+        Why we wrap the *second* failure into LLMError instead of letting the
+        ValueError bubble:
+          The router layer only catches LLMError → any ValueError here would fall
+          through the global middleware and surface to the user as a generic
+          "internal server error" 500. By converting it here, the router cleanly
+          maps it to a 502 with a Chinese toast message — single point of
+          containment (DIP), no need for every router to add a redundant guard.
         """
         text = await self.complete(system, user, temperature=temperature, max_tokens=max_tokens)
         try:
             return _extract_json(text)
-        except ValueError as e:
-            log.warning("LLM returned non-JSON, retrying once with stricter system prompt: %s", e)
-            stricter_system = (
-                system
-                + "\n\n严格要求：必须返回合法 JSON。不要使用 markdown 代码块。不要在 JSON 前后添加任何文字。"
-            )
-            text2 = await self.complete(stricter_system, user, temperature=temperature, max_tokens=max_tokens)
+        except ValueError as first_err:
+            log.warning("LLM returned non-JSON, retrying once with stricter system prompt: %s", first_err)
+
+        stricter_system = (
+            system
+            + "\n\n严格要求：必须返回合法 JSON。不要使用 markdown 代码块。不要在 JSON 前后添加任何文字。"
+        )
+        text2 = await self.complete(stricter_system, user, temperature=temperature, max_tokens=max_tokens)
+        try:
             return _extract_json(text2)
+        except ValueError as retry_err:
+            # The retry also failed. Log a snippet (not the full payload, which
+            # could be huge) and surface as LLMError so the router can return a
+            # clean 502 + Chinese toast instead of a confusing 500.
+            snippet = (text2 or "")[:300]
+            log.error("LLM JSON parse failed after retry. snippet=%r", snippet)
+            raise LLMError(
+                f"模型连续两次未返回合法 JSON，请稍后重试或更换更短的输入。snippet={snippet!r}",
+                code="LLM_BAD_JSON",
+            ) from retry_err
 
 
 def _extract_json(text: str) -> Any:

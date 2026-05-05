@@ -731,12 +731,32 @@
     const personasContainer = document.querySelector(".koc-personas");
     if (!bg || !hobby || !resource || !personasContainer) return;
 
-    const generateBtn = Array.from(document.querySelectorAll(".btn-primary")).find(
+    // We text-match buttons inside the form's wrapper instead of scanning the
+    // whole document — `feature-2.html` may contain other primary buttons in
+    // future (header CTAs etc.) and a global query would over-grab them.
+    const formScope = bg.closest(".koc-panel") || document;
+    const generateBtn = Array.from(formScope.querySelectorAll("button")).find(
       (b) => /生成.*人设|生成.*方案/.test((b.textContent || "").trim())
+    );
+    const refreshBtn = Array.from(formScope.querySelectorAll("button")).find(
+      (b) => /换一批/.test((b.textContent || "").trim())
     );
     if (!generateBtn) return;
 
-    generateBtn.addEventListener("click", async () => {
+    /**
+     * Run a single persona-generation pass. Bound to BOTH:
+     *   - the main "生成 3 个人设方案" button
+     *   - the secondary "换一批" button (re-runs with the same inputs)
+     *
+     * Extracted into a function (instead of duplicating the click handler on
+     * each button) so the two CTAs stay in sync when we evolve the contract
+     * later — see SOLID/OCP.
+     *
+     * @param {HTMLButtonElement} triggerBtn  the button the user just clicked
+     *                                        — used so loading state is shown
+     *                                        on whichever button was pressed.
+     */
+    async function runGenerate(triggerBtn) {
       const body = {
         background: (bg.value || "").trim(),
         interests: (hobby.value || "").trim(),
@@ -747,7 +767,10 @@
         return;
       }
 
-      KOCApi.setLoading(generateBtn, true, "生成中…");
+      // Lock both buttons during the call so a frantic user can't double-fire.
+      KOCApi.setLoading(triggerBtn, true, "生成中…");
+      if (refreshBtn && refreshBtn !== triggerBtn) refreshBtn.disabled = true;
+      if (generateBtn && generateBtn !== triggerBtn) generateBtn.disabled = true;
       setBusy(personasContainer, "AI 正在分析你的输入并生成 3 个差异化人设…");
       try {
         const resp = await KOCApi.postJSON("/api/persona/generate", body);
@@ -767,9 +790,16 @@
         renderError(personasContainer, e);
         KOCApi.showToast(e.message || "生成失败", "error");
       } finally {
-        KOCApi.setLoading(generateBtn, false);
+        KOCApi.setLoading(triggerBtn, false);
+        if (refreshBtn) refreshBtn.disabled = false;
+        if (generateBtn) generateBtn.disabled = false;
       }
-    });
+    }
+
+    generateBtn.addEventListener("click", () => runGenerate(generateBtn));
+    if (refreshBtn) {
+      refreshBtn.addEventListener("click", () => runGenerate(refreshBtn));
+    }
   }
 
   /**
