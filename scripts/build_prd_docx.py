@@ -15,13 +15,14 @@
   - 引用 >
   - 段落
   - 分隔线 --- （Word 里转换成空段落，避免视觉切断）
+  - 图片 ![alt](path)  → 嵌入图片 + alt 文本作为图注（v0.9 新增）
   - inline: **bold** / *italic* / `inline_code`
 
 故意不支持（PRD 没用到）：
-  - 图片 ![]
   - 链接 []()  → 直接输出原文（PRD 里链接量极少）
   - 嵌套列表
   - HTML 块
+  - 行内图片（图片必须独占一行）
 """
 from __future__ import annotations
 
@@ -30,13 +31,22 @@ import sys
 from pathlib import Path
 
 from docx import Document
-from docx.shared import Pt, RGBColor
+from docx.shared import Inches, Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 
 # Inline 标记的优先级：粗体 → 斜体 → 内联代码
 # 用一次性 split 保证不重叠匹配；** 必须先于 * 否则会被吞
 _INLINE_RE = re.compile(r"(\*\*.+?\*\*|`[^`]+?`|\*[^*\s][^*]*?\*)")
+
+# 图片行：`![alt](path)` 必须独占一行（前后允许空白）
+# alt 允许为空；path 不允许包含右括号（与标准 markdown 一致）
+_IMAGE_LINE_RE = re.compile(r"^\!\[(.*?)\]\(([^)]+)\)\s*$")
+
+# 默认图片宽度（英寸）。A4 纵向去掉左右默认 1in 边距后剩 6.27in，
+# 留 0.27 安全余量避免某些 Word 主题样式撑出页面。
+DEFAULT_IMAGE_WIDTH_INCHES = 6.0
 
 
 def _add_runs_with_inline(paragraph, text: str) -> None:
@@ -88,9 +98,46 @@ def _is_table_separator_row(cells: list[str]) -> bool:
     return all(re.match(r"^:?-+:?$", c.strip()) for c in cells if c.strip())
 
 
+def _add_image(doc: Document, alt: str, src_rel: str, project_root: Path) -> None:
+    """把 ![alt](path) 渲染为居中图片 + 灰色斜体图注。
+
+    ``src_rel`` 解析顺序（按"先严后宽"的查找规则，便于多种写法都能命中）：
+      1. 相对项目根（推荐写法，例：``docs/screenshots/s-01.png``）
+      2. 相对 docs/（例：``screenshots/s-01.png``）
+
+    图缺失不抛异常——降级为红字 ``[image missing: ...]`` 占位段落。这是为了
+    让"先写 md 后补图"的工作流不阻塞文档生成（防御性编程，OCP）。
+    """
+    src = src_rel.strip()
+    candidates = [project_root / src, project_root / "docs" / src]
+    img_path = next((c for c in candidates if c.exists()), None)
+
+    if img_path is None:
+        p = doc.add_paragraph()
+        run = p.add_run(f"[image missing: {src}]")
+        run.italic = True
+        run.font.color.rgb = RGBColor(0xC0, 0x39, 0x2B)
+        return
+
+    pic_para = doc.add_paragraph()
+    pic_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    pic_para.add_run().add_picture(str(img_path), width=Inches(DEFAULT_IMAGE_WIDTH_INCHES))
+
+    if alt.strip():
+        cap = doc.add_paragraph()
+        cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        cap_run = cap.add_run(alt.strip())
+        cap_run.italic = True
+        cap_run.font.size = Pt(9)
+        cap_run.font.color.rgb = RGBColor(0x66, 0x66, 0x66)
+
+
 def _convert(md_path: Path, docx_path: Path) -> None:
     raw = md_path.read_text(encoding="utf-8")
     lines = raw.splitlines()
+
+    # 项目根 = md_path 的祖父目录（约定：md 在 docs/ 下；项目根在 docs/ 的父目录）
+    project_root = md_path.resolve().parent.parent
 
     doc = Document()
     _set_default_chinese_font(doc)
@@ -108,6 +155,14 @@ def _convert(md_path: Path, docx_path: Path) -> None:
         # ---- 分隔线 ----
         if stripped == "---":
             doc.add_paragraph()  # 视觉留白即可，不绘线
+            i += 1
+            continue
+
+        # ---- 图片行 ![alt](path) ----
+        # 必须放在表格 / 标题判定之前——否则 alt 含特殊字符时可能误命中其他规则
+        m_img = _IMAGE_LINE_RE.match(stripped)
+        if m_img:
+            _add_image(doc, m_img.group(1), m_img.group(2), project_root)
             i += 1
             continue
 

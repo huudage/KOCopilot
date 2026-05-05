@@ -460,7 +460,10 @@ bash scripts/deploy.sh
 
 ## 9. 关联文档
 
-- `docs/PRD.md` — v1 产品需求文档（v0.1 上线后建议出 v1.1，把"无后端"改成"FastAPI 后端"）
+- `docs/PRD.md` — 产品需求文档 v2.0（含 PRD 迭代记录表）。重生成 docx 见 §11.11
+- `docs/AI-DESIGN.md` — 6 个 AI 干预点的 prompt / schema / 三层兜底详解
+- `docs/screenshots/` — PRD 截图集中目录（`s-01.png` ~ `s-27.png`）。新增截图按下一序号命名即可
+- `docs/screenshots/mapping.json` — 抽图脚本生成的"图 ↔ 章节"映射，供 PRD 作者对照位置
 - `../DEPLOYMENT.md` — 慢病项目部署手册，KOCopilot 流程与之 95% 一致
 
 ---
@@ -508,6 +511,20 @@ bash scripts/deploy.sh
 - ✅ 35 个 pytest 全过（mock 路径 100% 覆盖）
 - ⏳ **待用户做的 5 件事**：① 阿里云加 DNS A 记录 ② 火山开通**极速版**资源（资源 ID `volc.bigasr.auc_turbo`） ③ rsync 代码上服务器 ④ root 跑 install ⑤ certbot
 - ⏳ **v0.6 计划**：① OSS 直传支持 100MB 上限的更长视频 ② 流式 SSE typewriter ③ slowapi IP 限频 ④ Sentry 错误监控
+
+### 2026-05-05 第九次交付（PRD v2.0 + 文档构建工作流自动化）
+- ✅ **PRD.md 升级到 v2.0**，新增 6 大块内容：
+  - §1.1 目标用户加 22-35 岁年龄段 + 行为特征（每天刷视频 ≥ 90 分钟、月均付费 1-2 次）
+  - §1.2 三大痛点采用 **A+C+F 佐证**（行业数据 + 平台规则 + 案例叙事），引用克劳锐 / 新榜 / 抖音创作者大会 / 星子文化白皮书等权威数据
+  - §2.0 加产品概述一句话
+  - §3.2 / §3.3 加"去掉 AI 这个产品还能成立吗"反问 + 4 项 AI 生成能力强大之处
+  - §3.4 加"模型 / API / 平台清单 + AI 工作流程图"集中段
+  - §八 商业化（目标市场 1000 万 KOC + 4 阶段盈利模式 + 5 项竞争优势 + 4 类风险对冲）
+  - §九 落地可行性（技术架构图 + 已落地 / 规划开发节奏 + 三阶段资源评估）
+- ✅ **新增 `scripts/extract_docx_images.py`**：从 docx 抽图到 `docs/screenshots/s-NN.png`，输出 mapping.json 标注每张图所在章节
+- ✅ **升级 `scripts/build_prd_docx.py`**：支持 markdown 标准 `![alt](path)` 占位语法，自动嵌入图片 + alt 转灰色斜体图注；图缺失降级为红字占位不阻塞构建
+- ✅ **截图集中管理**：27 张截图全部归档 `docs/screenshots/`，PRD.md 通过相对路径引用——以后改 PRD 不用再手工往 docx 里粘图
+- ✅ **PRD 迭代记录表**：每次 PRD 重大改版都在表头登记一行（v 号 / 日期 / 对应产品版本 / 关键变更）
 
 ### 2026-05-04 第八次交付（人设直连拆解 + brief 创作要求）
 - ✅ **人设页生成即可一键采用**：feature-2 的每张人设方案卡底部新增「采用此方案 → 进入爆款拆解」按钮；点击后 `KOCActivePersona.setSelected(record, idx)` 把 `{recordId, personaIdx, name, differentiation, rationale, score, inputs}` 写进 `sessionStorage["koc.activePersona"]`，再跳转 `feature-1.html`，第 0 步面板自动渲染选定方案——告别"生成完还得跳两次才能开始拆解"的体验断点
@@ -741,3 +758,43 @@ notepad server\.env
 | pytest 找不到 `app` 模块 | cwd 不对 | `cd server` 后再跑，或用 `python -m pytest server/tests` |
 | `git push` 弹浏览器登录 | 凭证过期 | 用浏览器登 GitHub 重新授权即可 |
 | GitHub 拒绝 push 显示 secret detected | 不小心把 key 写进了文件 | 删 key、`git commit --amend`、再 push |
+
+### 11.11 PRD 文档维护工作流（v0.9 起 docx 完全自动化）
+
+PRD 的源是 `docs/PRD.md`，docx 是产物——**永远不要手改 PRD.docx，改了下次构建会被覆盖**。
+
+#### 日常迭代：改 PRD 内容
+
+```powershell
+# 1. 改 docs/PRD.md（在表头追加一行迭代记录）
+# 2. 重新生成 docx
+$env:PYTHONIOENCODING="utf-8"
+python scripts\build_prd_docx.py
+# 输出：OK -> D:\nocode\koc-copilot\docs\PRD.docx  (8966.1 KB)
+```
+
+构建脚本会自动把 md 里的 `![alt](docs/screenshots/s-NN.png)` 转成内嵌图 + 灰色图注，宽度统一 6 英寸。
+
+#### 新增截图：把图扔进 `docs/screenshots/` 即可
+
+1. 截图按现有序号往后排，命名 `s-28.png` / `s-29.png`...
+2. 在 `docs/PRD.md` 的目标章节插入 `![图注文字](docs/screenshots/s-28.png)`
+3. 重跑 `python scripts\build_prd_docx.py`
+
+#### 紧急回收别人改过的 docx（极少用到）
+
+如果用户/同事把图片或文字直接塞进 docx 里没回 md，可以用抽图脚本把图救出来：
+
+```powershell
+$env:PYTHONIOENCODING="utf-8"
+python scripts\extract_docx_images.py
+# 27 张图导出到 docs/screenshots/，mapping.json 标记每张图所在章节
+```
+
+然后比对 mapping 与 md，把缺位的图占位补回 md，重跑构建即可。
+
+#### 红线
+
+- ❌ 直接编辑 `docs/PRD.docx` —— 会被构建覆盖
+- ❌ 把图直接 base64 嵌进 md —— Word 会把它当文字
+- ❌ 删 `docs/screenshots/mapping.json` —— 这是抽图工作流的索引
