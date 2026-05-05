@@ -17,6 +17,11 @@
  *                                            把「人设 / 台词 / 骨架 / 3 答案 / 脚本」打成
  *                                            一个完整可回放记录。中途放弃不会污染历史。
  *   - listPersonas() / listScripts()       → 倒序，最多 MAX_ITEMS 条
+ *   - getPersona(recordId, personaIdx)     → 单方案查询（v0.10 起；编辑器初始化用）
+ *   - updatePersona(recordId, personaIdx, updates)
+ *                                          → v0.10 起：原地修改某条 personas[idx] 的部分字段
+ *                                            （并把同 record 在 KOCActivePersona 中的快照同步刷新）。
+ *                                            返回更新后的 persona 对象；找不到时返回 null。
  *   - removePersona(id) / removeScript(id)
  *   - renderBoards()                       → 工作台调用，幂等
  *   - getKpis()                            → { personasTotal, scriptsTotal, scriptsThisWeek, hoursSaved }
@@ -123,6 +128,107 @@
   function listPersonas() { return readArray(LS_PERSONAS); }
   function listScripts() { return readArray(LS_SCRIPTS); }
 
+  /**
+   * 单方案查询。编辑器打开时调用以拿到完整字段（包括 reference_accounts 数组）。
+   * @returns {Object|null} 命中则返回 personas[personaIdx]，否则 null。
+   */
+  function getPersona(recordId, personaIdx) {
+    if (!recordId) return null;
+    var idx = parseInt(personaIdx, 10);
+    if (!Number.isFinite(idx) || idx < 0) return null;
+    var rec = listPersonas().find(function (r) { return r.id === recordId; });
+    if (!rec || !Array.isArray(rec.personas) || !rec.personas[idx]) return null;
+    return rec.personas[idx];
+  }
+
+  /**
+   * 原地修改一个已保存的 persona。
+   *
+   * 设计要点（SOLID/SRP）：
+   *   - 这是 KOCHistory 模块的唯一写入路径，外部模块不应直接 setItem(LS_PERSONAS,...)；
+   *     UI（feature-2 卡片 / workspace 看板 / koc-persona-editor）一律通过本函数。
+   *   - 字段白名单合并而非 Object.assign(record, updates)，是为了拒绝调用方把
+   *     id / createdAt 等元数据改坏（防御性编程）。
+   *   - 当被改的方案恰好是 KOCActivePersona 当前选中的那一个时，同步刷新
+   *     sessionStorage 里的快照——否则用户修改后跳到爆款拆解页发现"显示的还是旧名字"。
+   *
+   * @param {string} recordId
+   * @param {number} personaIdx
+   * @param {Object} updates  允许字段：name / differentiation / rationale /
+   *                          onboarding_advice / monetization_outlook / score /
+   *                          reference_accounts (string[])
+   * @returns {Object|null}   更新后的 persona 对象；记录不存在或 idx 越界时返回 null
+   */
+  function updatePersona(recordId, personaIdx, updates) {
+    if (!recordId || !updates || typeof updates !== "object") return null;
+    var idx = parseInt(personaIdx, 10);
+    if (!Number.isFinite(idx) || idx < 0) return null;
+
+    var list = readArray(LS_PERSONAS);
+    var pos = list.findIndex(function (r) { return r.id === recordId; });
+    if (pos < 0) return null;
+    var rec = list[pos];
+    if (!Array.isArray(rec.personas) || !rec.personas[idx]) return null;
+
+    var allowed = [
+      "name",
+      "differentiation",
+      "rationale",
+      "onboarding_advice",
+      "monetization_outlook",
+      "score",
+      "reference_accounts",
+    ];
+    var current = rec.personas[idx];
+    var merged = Object.assign({}, current);
+    allowed.forEach(function (k) {
+      if (Object.prototype.hasOwnProperty.call(updates, k)) {
+        merged[k] = updates[k];
+      }
+    });
+
+    if (typeof merged.score !== "undefined") {
+      var s = parseInt(merged.score, 10);
+      merged.score = Number.isFinite(s) ? Math.max(1, Math.min(5, s)) : current.score;
+    }
+    if (typeof merged.reference_accounts !== "undefined" && !Array.isArray(merged.reference_accounts)) {
+      merged.reference_accounts = current.reference_accounts || [];
+    }
+
+    rec.personas[idx] = merged;
+    list[pos] = rec;
+    writeArray(LS_PERSONAS, list);
+
+    syncActivePersonaSnapshot(recordId, idx, merged, rec.inputs);
+    return merged;
+  }
+
+  /**
+   * 当被编辑的人设恰好是 feature-1 第 0 步选中的那一个时，把
+   * sessionStorage["koc.activePersona"] 同步刷新。
+   *
+   * 这里直接对 sessionStorage 操作而非通过 KOCActivePersona.save()——因为
+   * koc-history.js 早于 interactions.js 加载，且 koc-history.js 也跑在
+   * workspace.html 这种没有 KOCActivePersona 实例的页面上；任何地方都用
+   * 一套幂等的 sessionStorage IO 是最安全的耦合方式。
+   */
+  function syncActivePersonaSnapshot(recordId, personaIdx, persona, recordInputs) {
+    try {
+      var raw = window.sessionStorage.getItem("koc.activePersona");
+      if (!raw) return;
+      var snap = JSON.parse(raw);
+      if (!snap || snap.recordId !== recordId || snap.personaIdx !== personaIdx) return;
+      snap.name = persona.name || "";
+      snap.differentiation = persona.differentiation || "";
+      snap.rationale = persona.rationale || "";
+      snap.score = persona.score || 0;
+      snap.inputs = recordInputs || snap.inputs || {};
+      window.sessionStorage.setItem("koc.activePersona", JSON.stringify(snap));
+    } catch (_e) {
+      // 隐私模式下 sessionStorage 不可用——跳过同步即可，不影响 LS 已经写成功的事实。
+    }
+  }
+
   function removeBy(key, id) {
     var list = readArray(key).filter(function (item) { return item.id !== id; });
     writeArray(key, list);
@@ -193,16 +299,30 @@
 
         var detailsHtml = (rec.personas || [])
           .map(function (p, idx) {
+            // 「编辑此方案」按钮放在 head 的右上角，与 score 同行——保持视觉
+            // 对称的同时降低误点删除的概率（删除按钮在 koc-history-item__row）。
             return (
               '<div class="koc-history-detail__item">' +
                 '<div class="koc-history-detail__head">' +
                   "<b>方案 " + (idx + 1) + " · " + escapeHtml(p.name || "未命名") + "</b>" +
-                  '<span class="koc-history-detail__score">' + fmtScore(p.score) + "</span>" +
+                  '<span class="koc-history-detail__head-right">' +
+                    '<span class="koc-history-detail__score">' + fmtScore(p.score) + "</span>" +
+                    '<button type="button" class="btn btn-ghost xs koc-history-detail__edit"' +
+                      ' data-action="edit-persona"' +
+                      ' data-record-id="' + escapeHtml(rec.id) + '"' +
+                      ' data-persona-idx="' + idx + '"' +
+                      ' aria-label="编辑此方案">' +
+                      '✎ 编辑' +
+                    "</button>" +
+                  "</span>" +
                 "</div>" +
                 (p.differentiation ? "<p>差异化 · " + escapeHtml(p.differentiation) + "</p>" : "") +
                 (p.rationale ? "<p>为何值得做 · " + escapeHtml(p.rationale) + "</p>" : "") +
                 (p.onboarding_advice ? "<p>起号建议 · " + escapeHtml(p.onboarding_advice) + "</p>" : "") +
                 (p.monetization_outlook ? "<p>变现预判 · " + escapeHtml(p.monetization_outlook) + "</p>" : "") +
+                (Array.isArray(p.reference_accounts) && p.reference_accounts.length
+                  ? "<p>对标账号 · " + escapeHtml(p.reference_accounts.join("、")) + "</p>"
+                  : "") +
               "</div>"
             );
           })
@@ -410,6 +530,52 @@
     });
   }
 
+  /**
+   * 把 detail 里的「✎ 编辑」按钮接到 KOCPersonaEditor。
+   *
+   * 为什么不在 renderPersonasBoard 内部直接绑：
+   *   - bindPersonaEditButtons 是幂等的（dataset.kocBound 锁），renderBoards 多次调用都安全；
+   *   - 与 bindToggleButtons / bindDeleteButtons 是同一种装配模式（grep 一致性）。
+   *   - PersonaEditor 是 SOLID/DIP 边界——KOCHistory 不知道它怎么实现 modal，
+   *     只在 window.KOCPersonaEditor 存在时调用；不存在就 no-op（CLI 测试场景）。
+   */
+  function bindPersonaEditButtons() {
+    document.querySelectorAll('[data-action="edit-persona"]').forEach(function (btn) {
+      if (btn.dataset.kocBound === "1") return;
+      btn.dataset.kocBound = "1";
+      btn.addEventListener("click", function () {
+        var recordId = btn.dataset.recordId;
+        var idx = parseInt(btn.dataset.personaIdx, 10);
+        var persona = getPersona(recordId, idx);
+        if (!persona) {
+          if (window.KOCApi && window.KOCApi.showToast) {
+            KOCApi.showToast("找不到该方案，可能已被删除。", "error");
+          } else {
+            alert("找不到该方案，可能已被删除。");
+          }
+          return;
+        }
+        if (!window.KOCPersonaEditor || typeof window.KOCPersonaEditor.open !== "function") {
+          alert("编辑器未加载（请刷新页面）。");
+          return;
+        }
+        window.KOCPersonaEditor.open(persona, {
+          title: "编辑方案 · " + (persona.name || "未命名"),
+          onSave: function (patch) {
+            var updated = updatePersona(recordId, idx, patch);
+            if (!updated) return false;
+            // 重渲染整个看板——简单可靠，因为本浏览器存量记录上限 30 条。
+            renderBoards();
+            if (window.KOCApi && window.KOCApi.showToast) {
+              KOCApi.showToast("已保存修改：" + (updated.name || "未命名"), "success");
+            }
+            return true;
+          },
+        });
+      });
+    });
+  }
+
   function renderBoards() {
     var pUl = document.querySelector('[data-history-list="personas"]');
     var sUl = document.querySelector('[data-history-list="scripts"]');
@@ -420,6 +586,7 @@
     bindToggleButtons();
     bindDeleteButtons();
     bindScriptActions();
+    bindPersonaEditButtons();
     renderKpis();
   }
 
@@ -429,6 +596,8 @@
     saveScript: saveScript,
     listPersonas: listPersonas,
     listScripts: listScripts,
+    getPersona: getPersona,
+    updatePersona: updatePersona,
     removePersona: removePersona,
     removeScript: removeScript,
     renderBoards: renderBoards,

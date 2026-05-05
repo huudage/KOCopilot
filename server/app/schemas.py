@@ -19,6 +19,7 @@ class HealthResponse(BaseModel):
     version: str
     llm_provider: str
     asr_provider: str
+    t2v_provider: str = "mock"
 
 
 # =========================================================================
@@ -252,6 +253,93 @@ class ASRResponse(BaseModel):
     transcript: str
     duration_seconds: float
     provider: str
+    elapsed_ms: int
+
+
+# =========================================================================
+# Module 7 — Text-to-Video（智谱清影；默认 cogvideox-3）
+# =========================================================================
+# 设计决策：
+#   - 异步两段式（submit → poll query）：视频生成 30s-3min，blocking 调用必超时。
+#   - prompt 硬限 500 字符（智谱官方 512，留 12 字安全余量；与 config.t2v_max_prompt_chars 对齐）。
+#   - size：合并 CogVideoX-3 官方枚举 + CogVideoX-2 独有分辨率（用户若把 ZHIPU_VIDEO_MODEL
+#     改为 cogvideox-2，可选 720x480 / 960x1280 等；与 v3 叠用时以智谱接口校验为准）。
+#   - quality 默认 speed：速出优先；可切 quality。
+#   - with_audio 默认 false：KOC 一般自配口播/BGM。
+#   - duration / fps：由服务端 config（cogvideox-3）注入，不在此 schema 暴露，避免与 v2 冲突。
+T2VSize = Literal[
+    # CogVideoX-3（开放平台 OpenAPI 枚举）
+    "1280x720",
+    "720x1280",
+    "1024x1024",
+    "1920x1080",
+    "1080x1920",
+    "2048x1080",
+    "3840x2160",
+    # CogVideoX-2 / flash 额外分辨率（仅旧模型可用）
+    "720x480",
+    "1280x960",
+    "960x1280",
+]
+
+
+class T2VSubmitRequest(BaseModel):
+    """文生视频 · 提交生成任务的请求体。"""
+
+    prompt: str = Field(
+        ...,
+        min_length=4,
+        max_length=500,
+        description="视频文本描述（≤ 500 字）。建议结构：主体（描述）+ 环境 + 镜头/光线 + 氛围。",
+    )
+    size: T2VSize = Field(
+        default="720x1280",
+        description="分辨率。默认 9:16 竖屏（与 cogvideox-3 OpenAPI 对齐）；KOC 短视频常用竖版。",
+    )
+    quality: Literal["speed", "quality"] = Field(
+        default="speed",
+        description="speed=30s 速出，quality=60-120s 高质。默认 speed。",
+    )
+    with_audio: bool = Field(
+        default=False,
+        description="是否生成 AI 音轨。默认 false，留给创作者自行配音/配 BGM。",
+    )
+    # 可选 user_id：路由层会拿请求 trace_id 做兜底，但前端可显式传一个稳定标识符（如浏览器指纹），
+    # 让智谱侧能跨多次请求识别同一个终端用户用于内容审核/限频（智谱要求 6-128 字符）。
+    user_id: Optional[str] = Field(
+        default=None,
+        min_length=6,
+        max_length=128,
+        description="终端用户唯一 ID（智谱内容审核用）；未提供则路由层自动生成。",
+    )
+
+
+class T2VSubmitResponse(BaseModel):
+    """提交成功后立即返回；前端拿 task_id 去轮询 query。"""
+
+    task_id: str
+    request_id: str
+    model: str
+    provider: str
+    status: Literal["pending"] = "pending"
+    elapsed_ms: int
+
+
+class T2VQueryResponse(BaseModel):
+    """轮询单次结果。
+
+    - status="pending"：还在生成，前端继续等
+    - status="succeeded"：video_url / cover_image_url 就位
+    - status="failed"：fail_reason 给出原因（仅供前端展示，不重试，不扣额）
+    """
+
+    task_id: str
+    status: Literal["pending", "succeeded", "failed"]
+    model: str
+    provider: str
+    video_url: Optional[str] = None
+    cover_image_url: Optional[str] = None
+    fail_reason: Optional[str] = None
     elapsed_ms: int
 
 

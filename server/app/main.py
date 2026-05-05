@@ -26,7 +26,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import __version__
 from .config import get_settings
-from .routers import asr, comments, persona, qa, script, seo, skeleton
+from .routers import asr, comments, persona, qa, script, seo, skeleton, t2v
 from .schemas import ErrorResponse, HealthResponse
 
 
@@ -52,12 +52,13 @@ async def lifespan(app: FastAPI):
     log = logging.getLogger("kocopilot.boot")
     settings = get_settings()
     log.info(
-        "KOCopilot v%s booting on %s:%s | LLM=%s | ASR=%s | static=%s",
+        "KOCopilot v%s booting on %s:%s | LLM=%s | ASR=%s | T2V=%s | static=%s",
         __version__,
         settings.host,
         settings.port,
         settings.llm_provider,
         settings.asr_provider,
+        settings.t2v_provider,
         settings.static_root.resolve(),
     )
     yield
@@ -139,6 +140,7 @@ def create_app() -> FastAPI:
             version=__version__,
             llm_provider=settings.llm_provider,
             asr_provider=settings.asr_provider,
+            t2v_provider=settings.t2v_provider,
         )
 
     app.include_router(persona.router, prefix="/api/persona", tags=["persona"])
@@ -148,6 +150,7 @@ def create_app() -> FastAPI:
     app.include_router(seo.router, prefix="/api/seo", tags=["seo"])
     app.include_router(comments.router, prefix="/api/comments", tags=["comments"])
     app.include_router(asr.router, prefix="/api/asr", tags=["asr"])
+    app.include_router(t2v.router, prefix="/api/t2v", tags=["t2v"])
 
     # ---- Static frontend (mounted last so /api/* takes precedence) ----
     # 极速版 ASR 直传 base64，已经不再需要 /asr-tmp/ 公网回源路径，省一处配置。

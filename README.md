@@ -14,11 +14,12 @@ KOCopilot 把"人设定位 → 内容生产 → 长尾分发 → 互动运营"�
 
 1. **首页（产品说明）** `index.html` — 介绍价值主张、痛点、四步工作流、三大对外能力，强 CTA 引导进入工作台。
 2. **工作台** `workspace.html` — 推荐工作流卡片（人设 → 拆解 → 标题车间 → 评论分拣），加「我的人设」「我的拆解项目」两个本地历史看板（localStorage）。
-3. **四个功能页**：
+3. **五个功能页**：
    - `feature-2.html` 人设生成（**第一步**，每次创作的起点）
    - `feature-1.html` 爆款拆解 + 脚本引擎
    - `feature-3.html` 标题车间（**仅抖音**，去除多平台切换）
    - `feature-4.html` 评论分拣
+   - `feature-5.html` **解说视频生成（v0.9 实验功能 · 智谱清影 CogVideoX-3，默认）**
 
 ### 1.2 仓库结构
 
@@ -26,11 +27,13 @@ KOCopilot 把"人设定位 → 内容生产 → 长尾分发 → 互动运营"�
 koc-copilot/
 ├── index.html                         # 首页（产品说明 / 落地页）
 ├── workspace.html                     # 工作台（含 localStorage 历史看板）
-├── feature-1.html ~ feature-4.html    # 4 个功能页
+├── feature-1.html ~ feature-5.html    # 5 个功能页（feature-5 = v0.9 文生视频实验）
 ├── styles.css / app-screens.css       # 全站样式（CSS 变量 = 单点换皮）
 ├── api.js                             # 前端 API 客户端（fetch / loading / toast）
-├── interactions.js                    # 4 个表单的提交-渲染逻辑
-├── koc-history.js                     # localStorage 历史 + 工作台看板渲染
+├── interactions.js                    # 4 个表单的提交-渲染逻辑（feature-1/2/3/4）
+├── t2v.js                             # feature-5 专属：轮询状态机 / prompt 自动带入
+├── koc-history.js                     # localStorage 历史 + 工作台看板渲染 + updatePersona API
+├── koc-persona-editor.js              # v0.10 起：全局 modal 人设手动编辑器（SRP）
 ├── asr-uploader.js                    # ffmpeg.wasm 抽轨 + 调用后端 ASR
 ├── run.ps1 / run.sh                   # 启动 uvicorn FastAPI（含 venv 自举 + pip 安装）
 ├── stop.ps1 / stop.sh                 # 优雅停止
@@ -39,21 +42,24 @@ koc-copilot/
 │   │   ├── main.py                    # FastAPI 入口（路由 + 中间件 + 静态挂载）
 │   │   ├── config.py                  # Pydantic Settings（读取 .env）
 │   │   ├── schemas.py                 # 所有请求/响应 Pydantic 模型
-│   │   ├── routers/                   # 6 个业务端点 + ASR
+│   │   ├── routers/                   # 7 个业务端点 + ASR + T2V
 │   │   │   ├── persona.py             # POST /api/persona/generate
 │   │   │   ├── skeleton.py            # POST /api/skeleton/extract
-│   │   │   ├── qa.py                  # POST /api/qa/next        (引导式问答 ≤3 轮)
+│   │   │   ├── qa.py                  # POST /api/qa/next         (引导式问答 ≤3 轮)
 │   │   │   ├── script.py              # POST /api/script/generate (基于骨架+答案出原创脚本)
-│   │   │   ├── seo.py                 # POST /api/seo/titles  （platform 锁定 douyin）
+│   │   │   ├── seo.py                 # POST /api/seo/titles      （platform 锁定 douyin）
 │   │   │   ├── comments.py            # POST /api/comments/classify
-│   │   │   └── asr.py                 # POST /api/asr/transcribe (火山豆包 Flash)
+│   │   │   ├── asr.py                 # POST /api/asr/transcribe  (火山豆包 Flash)
+│   │   │   └── t2v.py                 # POST /api/t2v/submit + GET /api/t2v/query/{id}
+│   │   │                              #   v0.9 新增 · 智谱清影 CogVideoX（默认 cogvideox-3）
 │   │   └── services/
 │   │       ├── llm_client.py          # LLMClient 抽象 + Mock + DeepSeek 实现
 │   │       ├── asr_client.py          # ASRClient 抽象 + Mock + 火山豆包 Flash 实现
-│   │       └── prompts/               # 4 个模块的 system prompt 模板
-│   ├── tests/                         # pytest 单元 + 集成测试（37 通过）
+│   │       ├── t2v_client.py          # T2VClient 抽象 + Mock + 智谱 CogVideoX 实现
+│   │       └── prompts/               # 6 个 LLM 模块的 system prompt 模板
+│   ├── tests/                         # pytest 单元 + 集成测试（54 通过 · 含 17 个 T2V 新增）
 │   ├── requirements.txt               # 生产依赖
-│   └── .env.example                   # 复制为 .env 后填入 DeepSeek + 豆包 Key
+│   └── .env.example                   # 复制为 .env 后填入 DeepSeek + 豆包 + 智谱 Key
 ├── deploy/
 │   ├── kocopilot-server.service       # systemd 单元（占位符 → sed 替换）
 │   └── nginx.conf.example             # nginx 站点配置（占位符 → sed 替换）
@@ -186,6 +192,48 @@ ffmpeg.wasm 0.12 用 SharedArrayBuffer 跨线程传数据，浏览器要求页�
 - 5 分钟视频 ≈ ¥0.25 / 次
 - 100 用户 × 每天 5 次 × 5 分钟 ≈ ¥125 / 天，需要在前端做配额（v0.5 待办）
 
+### 2.5 T2V：智谱清影文生视频（默认 **CogVideoX-3**，v0.9 起第 7 个 AI 干预点）
+
+**架构**
+
+```
+浏览器 feature-5.html              KOCopilot 后端                      智谱开放平台
+─────                              ──────────────                      ──────────
+prompt 输入 ─→ POST /api/t2v/submit ─→ T2VClient.submit() ─→ POST /paas/v4/videos/generations
+                                      ↓ < 2s 返回 task_id              (异步任务，30s-3min)
+            ←── { task_id, pending } ─
+每 5s 轮询 ─→ GET /api/t2v/query/{id} ─→ T2VClient.query() ─→ GET /paas/v4/async-result/{id}
+                                                              ↓ task_status: SUCCESS
+            ←── { status: succeeded, video_url, cover_image_url }
+下载 mp4 / 重新生成 / 跳标题车间
+```
+
+**默认开箱即用（mock 模式）**：未配置 `ZHIPU_API_KEY` 时自动降级到 `MockT2VClient`——8 秒后返回示例视频 URL，前端轮询 UI 完整跑通，离线演示零依赖。
+
+**接入真实智谱 API**：
+
+```powershell
+# 1) 去 https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys 创建 API Key
+# 2) 编辑 server/.env（默认已与开放平台主推对齐）：
+#      T2V_PROVIDER=zhipu
+#      ZHIPU_API_KEY=<你的 zhipu-api-key>
+#      ZHIPU_VIDEO_MODEL=cogvideox-3          # 默认；可改为 cogvideox-2 压低成本
+#      ZHIPU_VIDEO_FPS=30                     # 仅 cogvideox-3：30 或 60
+#      ZHIPU_VIDEO_DURATION=5                 # 仅 cogvideox-3：5 或 10（秒）
+# 3) 重启服务：
+.\stop.ps1; $env:SKIP_INSTALL=1; .\run.ps1
+# 4) 浏览器打开 http://127.0.0.1:8090/feature-5.html，输入 prompt → 等待返回视频
+```
+
+**计费 / 配额** （2026.05，以智谱开放平台公示为准）
+
+- **CogVideoX-3（默认）**：官网体验中心与文档主推；约 **¥1/次**，时长 **5s 或 10s**（由 `ZHIPU_VIDEO_DURATION` 决定），支持 **fps 30/60**。
+- **CogVideoX-2（可选）**：约 **¥0.5/次**，输出固定约 **6 秒**；在 `.env` 设 `ZHIPU_VIDEO_MODEL=cogvideox-2` 即可切换——注意分辨率枚举与 v3 略有差异（见 `schemas.T2VSize` / feature-5 下拉说明）。
+- **失败任务不扣费**——智谱按成功任务结算（与官方说明一致）。
+- **并发限制**：V0 用户 5 任务并发，高等级账户更高；KOCopilot 单租户场景一般用不到上限。
+
+**架构亮点**：T2VClient 完全对齐现有 LLMClient/ASRClient 抽象；`ZhipuT2VClient` 在模型名为 `cogvideox-3` 时自动附加 `fps`/`duration`，避免对 `cogvideox-2` 误传导致 400。详细论证见 `docs/PRD.md §3.7`。
+
 ---
 
 ## 3. 验收 checklist
@@ -218,7 +266,7 @@ cd server
 # python -m pytest -v                                                     # Unix
 ```
 
-预期：**26 passed**。
+预期：**54 passed**。
 
 ---
 
@@ -460,10 +508,11 @@ bash scripts/deploy.sh
 
 ## 9. 关联文档
 
-- `docs/PRD.md` — 产品需求文档 v2.0（含 PRD 迭代记录表）。重生成 docx 见 §11.11
-- `docs/AI-DESIGN.md` — 6 个 AI 干预点的 prompt / schema / 三层兜底详解
+- `docs/PRD.md` — 产品需求文档 **v3.0**（含 PRD 迭代记录表 + §3.7 文生视频接入策略论证）。重生成 docx 见 §11.11
+- `docs/AI-DESIGN.md` — 6 个文本类 AI 干预点的 prompt / schema / 三层兜底详解（T2V 干预点的工程详解直接见 `services/t2v_client.py` 顶部 docstring）
 - `docs/screenshots/` — PRD 截图集中目录（`s-01.png` ~ `s-27.png`）。新增截图按下一序号命名即可
 - `docs/screenshots/mapping.json` — 抽图脚本生成的"图 ↔ 章节"映射，供 PRD 作者对照位置
+- `server/.env.example` — 后端环境变量模板，含 LLM / ASR / T2V 三大模块全部配置项注释
 - `../DEPLOYMENT.md` — 慢病项目部署手册，KOCopilot 流程与之 95% 一致
 
 ---
@@ -511,6 +560,41 @@ bash scripts/deploy.sh
 - ✅ 35 个 pytest 全过（mock 路径 100% 覆盖）
 - ⏳ **待用户做的 5 件事**：① 阿里云加 DNS A 记录 ② 火山开通**极速版**资源（资源 ID `volc.bigasr.auc_turbo`） ③ rsync 代码上服务器 ④ root 跑 install ⑤ certbot
 - ⏳ **v0.6 计划**：① OSS 直传支持 100MB 上限的更长视频 ② 流式 SSE typewriter ③ slowapi IP 限频 ④ Sentry 错误监控
+
+### 2026-05-06 第十一次交付（v0.10 死按钮普查 + 人设手动编辑器）
+- ✅ **前端按钮完整普查**：扫描 7 个 HTML 页面共 84 个按钮（index/workspace/feature-1..5），逐一对照 `interactions.js` / `koc-history.js` / `t2v.js` / `asr-uploader.js` 的绑定逻辑，输出诊断表
+  - 结论：**没有真正的死按钮**——所有 button 都至少有 1 处事件监听（直接 `data-koc-action` / 文本匹配 / `bindCopyButtons` 全局扫描三种模式）
+  - 唯一可优化项：feature-3 「换一版」按钮文案模糊（实际触发 runGenerate 重跑全部）→ 改为「重新生成」+ 加 `title` 提示，`bindSeoOutputActions` 双匹配兼容缓存中的旧 HTML
+- ✅ **新增 `koc-persona-editor.js`**：基于全局 modal 单例的可复用编辑器，遵循 SOLID
+  - **SRP**：只管「展示 / 校验 / 提交」表单；不持久化（onSave 回调注入）
+  - **DIP**：feature-2 / workspace 两处通过同一个 `KOCPersonaEditor.open(persona, options)` 调用
+  - **OCP**：扩展字段只改 `FIELD_DEFS`，不动生命周期
+  - **字段**：方案名（必填，30 字软上限）/ 差异化逻辑 / 为何值得做 / 起号建议 / 变现预判 / 推荐星级（5 颗星点选）/ 对标账号（多 token 输入，逗号顿号空格分号都行）
+  - **交互**：实时字符计数 `0/40` + 越界变红、ESC / 背景点击 / × 都能关闭、保存中按钮锁、回调返回 false 时不关 modal 保留输入
+- ✅ **`koc-history.js` 加 3 个 API**：
+  - `getPersona(recordId, idx)` → 单方案查询（编辑器初始化时拿完整字段）
+  - `updatePersona(recordId, idx, updates)` → **白名单字段合并**（拒绝改 `id` / `createdAt`）+ score 自动 1-5 clamp + reference_accounts 类型兜底
+  - `bindPersonaEditButtons()` → 给 detail 区的 `[data-action="edit-persona"]` 按钮挂事件（幂等，dataset 锁防重）
+  - **彩蛋**：当被编辑的方案恰好是 `KOCActivePersona` 当前选中那个时，自动同步 `sessionStorage["koc.activePersona"]` 快照——避免改了名字但 feature-1 第 0 步面板还显示旧名字
+- ✅ **feature-2.html 人设结果卡** 在「采用此方案 → 进入爆款拆解」旁边加「✎ 编辑」按钮；编辑保存后单卡内存数组同步 + 重新渲染
+- ✅ **workspace.html「我的人设方案」看板** 展开 detail 后每个方案右上角加「✎ 编辑」按钮；保存后整版看板 `renderBoards()` 重渲染
+- ✅ **`app-screens.css` 补 ~120 行样式**：`.btn.xs` 紧凑尺寸、编辑器表单字段、5 星点选交互、字符计数器越界态、modal 复用 `.koc-modal__*` 骨架
+- ✅ **零回归**：54/54 pytest 仍全过；额外用 Node + jsdom-stub 跑了一段最小集成测试覆盖 `KOCHistory.updatePersona`：savePersonas → getPersona → updatePersona → score clamp（999→5、-2→1）→ 未知 record id 返回 null → id/createdAt 防覆盖 → sessionStorage 同步刷新，全部 OK
+- ⏳ **后续打磨候选**：① 编辑器引入「撤销最近一次修改」（保留 1 步历史）② 给方案"复制为新方案"动作（从 1 个生 N 个变体）③ workspace 看板增删改后通过自定义事件广播，避免依赖 `renderBoards` 全局重渲染
+
+### 2026-05-06 第十次交付（v0.9 文生视频接入 · 第 7 个 AI 干预点）
+- ✅ **新增 `services/t2v_client.py`**：`T2VClient` 抽象基类 + `ZhipuT2VClient`（智谱 REST；默认 cogvideox-3 自动附加 fps/duration）+ `MockT2VClient`（8 秒后自动 SUCCESS 的内存任务存储）；与 LLMClient/ASRClient 完全对齐 SOLID 风格
+- ✅ **新增 `routers/t2v.py`**：`POST /api/t2v/submit` + `GET /api/t2v/query/{task_id}`；prompt 防御性双层校验（Pydantic schema + 路由层）；T2VError 按 upstream code 映射 400/404/422/502，永不返回 500
+- ✅ **新增 `feature-5.html` + `t2v.js`**：4 阶段状态机（input/loading/result/error）；prompt 自动从 sessionStorage 带入脚本 `scenes[].visual` 字段；轮询逻辑含 5s 间隔、3 次连续失败放弃、8 分钟硬超时、单飞控制
+- ✅ **`feature-1.html` 第 4 步加 CTA**「→ 生成解说视频（实验）」；脚本未生成时按钮 disabled，生成成功后 enable + sessionStorage 写入结构化脚本对象
+- ✅ **`config.py` 加 5 个 T2V 字段**：`t2v_provider` / `zhipu_api_key` / `zhipu_video_model` / `t2v_max_prompt_chars` / `t2v_mock_duration_seconds`；`/api/health` 同步暴露 `t2v_provider`
+- ✅ **新建 `server/.env.example`**：作为标准配置模板提交进库（不忽略），把 LLM/ASR/T2V 三大模块的环境变量集中说明
+- ✅ **17 个新单测全过 + 零回归**（54 = 37 老 + 17 新）：mock 任务时间渐进、单例保留、factory 降级、Zhipu 构造校验、生命周期端到端、超长 prompt 422、未知任务 404
+- ✅ **本地 mock 联调通过**：submit 0.4s 返回 → 立即查询 pending → 9 秒后查询 succeeded + video_url + cover_image_url；trace_id 链路完整可观测
+- ✅ **PRD 升级到 v3.0**：§3.1 表格扩展为 7 行、§3.2 改为"7/7 都是 AI"、新增 §3.7 文生视频接入策略（5 路径评估 + 6 家供应商对比 + 工程落地图）
+- ⚠️ **关键设计选择**：默认 **`cogvideox-3`**（与智谱开放平台主推一致）；服务端对 v3 自动传 `fps`/`duration`。若需低价 6 秒方案，在 `.env` 设 `ZHIPU_VIDEO_MODEL=cogvideox-2`（勿向 v2 请求体写入 fps/duration）。
+- ⏳ **待用户做**：① 去 [智谱开放平台](https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys) 创建 API Key（注册即送 18M Token + 0.5 元/条视频）② 在 server/.env 设 `T2V_PROVIDER=zhipu` + `ZHIPU_API_KEY=<your-key>` ③ 重启后用 feature-5 真测一条视频
+- ⏳ **v1.0 计划**：① 演进路径 A → 路径 D（叠加 TTS 配音 + 字幕合成出完整 AI 解说视频）② 用户级视频额度配额 ③ 任务失败原因结构化分类（区分内容审核 / 余额不足 / 临时错误）
 
 ### 2026-05-05 第九次交付（PRD v2.0 + 文档构建工作流自动化）
 - ✅ **PRD.md 升级到 v2.0**，新增 6 大块内容：
@@ -753,6 +837,11 @@ notepad server\.env
 | `LLM 调用失败：HTTP 401` | DeepSeek Key 错或被封 | 去 platform.deepseek.com 重置 |
 | `LLM 调用失败：HTTP 429` | 余额不足 / 触发限频 | 充值 / 等几分钟 |
 | `ASR 失败：upstream 401` | 火山 Key 错 | 去火山控制台核对 |
+| `T2V_NO_KEY` / 视频生成 400 | 设了 `T2V_PROVIDER=zhipu` 但没配 `ZHIPU_API_KEY` | 编辑 `server/.env` 填 key 后 `.\stop.ps1; $env:SKIP_INSTALL=1; .\run.ps1` |
+| 视频生成 422 ：`String should have at most 500 characters` | prompt 超过智谱官方 512 字节限制 | 精简描述（建议结构：主体 + 环境 + 镜头 + 氛围）|
+| 视频生成 422 ：`prompt 违反内容审核` | 含人物 / 品牌 / 政治 / 暴力等敏感关键词 | 改为具象画面描述，避开实体 |
+| 视频生成 502 ：`HTTP_429` | 智谱并发上限（V0=5、V1=10、V2=15、V3=20）| 等当前任务结束再提交，或升级账户等级 |
+| 视频生成 ：8 分钟超时 | 智谱当前在排队 | 不扣费，稍后重试；高峰时段可手动用 `task_id` 查询 |
 | `502 Bad Gateway`（nginx） | 后端 systemd 服务挂了 | `systemctl restart kocopilot-server` |
 | `gunicorn timeout` | 视频太长 / DeepSeek 卡 | 检查 `journalctl -u kocopilot-server` 看上游耗时 |
 | pytest 找不到 `app` 模块 | cwd 不对 | `cd server` 后再跑，或用 `python -m pytest server/tests` |

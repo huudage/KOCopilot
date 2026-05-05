@@ -571,6 +571,10 @@
           copyBtn.disabled = false;
           copyBtn.dataset.fullText = resp.full_text || "";
         }
+        // 启用「→ 生成解说视频」按钮（v0.9 新增）。
+        // 脚本未完成时该按钮 disabled，避免用户跳到 feature-5 后空表单干瞪眼。
+        const t2vBtn = document.querySelector('[data-koc-action="goto-t2v"]');
+        if (t2vBtn) t2vBtn.disabled = false;
         // 一次性把"完整项目"入库——只有走到这里说明用户真的产出了脚本，
         // 工作台「我的脚本项目」才会出现新条目。
         if (window.KOCHistory && typeof window.KOCHistory.saveScript === "function") {
@@ -596,6 +600,16 @@
           if (resp.full_text) {
             sessionStorage.setItem("koc.lastScriptForSeo", resp.full_text);
           }
+        } catch (_) {}
+        // 把脚本结构化对象也存一份给「解说视频生成」用（v0.9 新增）。
+        // 不存 full_text 而是结构化数据是为了让 feature-5.html 自由拼装 prompt——
+        // 比如取第一个 scene.visual 作为画面建议（更适合 T2V），而不是把口播稿丢给视频模型。
+        try {
+          sessionStorage.setItem("koc.lastScriptForT2V", JSON.stringify({
+            hook_narration: resp.hook_narration || "",
+            scenes: resp.scenes || [],
+            cta_narration: resp.cta_narration || "",
+          }));
         } catch (_) {}
         KOCApi.showToast("脚本生成完成 · 用时 " + resp.elapsed_ms + "ms · 已存入工作台", "success");
       } catch (e) {
@@ -648,6 +662,25 @@
   })();
   // Expose so asr-uploader (separate script) can also re-trigger if needed.
   window.KOCQAFlow = KOCQAFlow;
+
+  // ============================================================================
+  // 「→ 生成解说视频」按钮（v0.9 新增，第 4 步脚本面板内）
+  // ----------------------------------------------------------------------------
+  // 为什么不直接用 <a href>：
+  //   要求「脚本未生成时按钮不可用」，<a> 没原生 disabled。用 <button> + JS 跳转
+  //   能复用现有 disabled 样式，UX 一致。
+  // 为什么不弹 modal 让用户先编辑 prompt：
+  //   modal 增加 1 步操作，且 prompt 编辑这件事在新页面 feature-5 里有更宽的空间
+  //   能展示尺寸/质量/with_audio 选项 + 计费提醒。modal 太挤。
+  function bindGotoT2V() {
+    const btn = document.querySelector('[data-koc-action="goto-t2v"]');
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+      if (btn.disabled) return;
+      // 脚本对象由 KOCQAFlow 的脚本生成回调写入；feature-5.html 自取。
+      window.location.href = "feature-5.html";
+    });
+  }
 
   function bindCopyScript() {
     const btn = document.querySelector('[data-koc-action="copy-script"]');
@@ -833,8 +866,18 @@
               ' data-persona-idx="' + idx + '"' +
             '>采用此方案 → 进入爆款拆解</button>'
           : '<span class="koc-persona__adopt-hint">（保存失败，前往工作台手动选择）</span>';
+        // v0.10：「✎ 编辑」按钮——AI 生成的方案不一定 100% 命中，给用户一个
+        // 兜底入口手动微调（改名字 / 换星级 / 调起号建议），不必再回到工作台。
+        // 没有 record 时不渲染编辑按钮，避免改了存不进。
+        const editBtn = canAdopt
+          ? '<button type="button" class="btn btn-ghost sm koc-persona__edit"' +
+              ' data-action="edit-persona-inline"' +
+              ' data-record-id="' + escapeHtml(record.id) + '"' +
+              ' data-persona-idx="' + idx + '"' +
+              ' aria-label="编辑此方案">✎ 编辑</button>'
+          : '';
         return (
-          '<article class="koc-persona">' +
+          '<article class="koc-persona" data-persona-idx="' + idx + '">' +
           '<span class="koc-pill' +
           (idx === 0 ? '" style="align-self: flex-start;' : '') +
           '">推荐 ' + stars + '</span>' +
@@ -846,7 +889,7 @@
           "<dt>起号建议</dt><dd>" + escapeHtml(p.onboarding_advice || "-") + "</dd>" +
           "<dt>变现预判</dt><dd>" + escapeHtml(p.monetization_outlook || "-") + "</dd>" +
           "</dl>" +
-          '<div class="koc-persona__cta">' + adoptBtn + "</div>" +
+          '<div class="koc-persona__cta">' + adoptBtn + editBtn + "</div>" +
           "</article>"
         );
       })
@@ -871,6 +914,41 @@
           );
           // 给 toast 一个露脸时间再跳转，避免用户看不到反馈
           setTimeout(() => { window.location.href = "feature-1.html"; }, 500);
+        });
+      });
+
+      // 「✎ 编辑」按钮——拉起 KOCPersonaEditor，保存成功后用 KOCHistory.getPersona
+      // 拿到合并后的最新对象，单卡片重渲染（不重渲染整列，否则会把旁边方案上下文 reset）。
+      container.querySelectorAll('[data-action="edit-persona-inline"]').forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const personaIdx = parseInt(btn.dataset.personaIdx, 10);
+          const recordId = btn.dataset.recordId;
+          const current = window.KOCHistory && window.KOCHistory.getPersona
+            ? window.KOCHistory.getPersona(recordId, personaIdx)
+            : personas[personaIdx];
+          if (!current) {
+            KOCApi.showToast("找不到该方案，无法编辑（可能已被删除）。", "error");
+            return;
+          }
+          if (!window.KOCPersonaEditor || typeof window.KOCPersonaEditor.open !== "function") {
+            KOCApi.showToast("编辑器未加载（请刷新页面）。", "error");
+            return;
+          }
+          window.KOCPersonaEditor.open(current, {
+            title: "编辑方案 · " + (current.name || "未命名"),
+            onSave: (patch) => {
+              const updated = window.KOCHistory.updatePersona(recordId, personaIdx, patch);
+              if (!updated) {
+                KOCApi.showToast("保存失败：本地存档已变化，请刷新后重试。", "error");
+                return false;
+              }
+              // 单卡内存数组同步——避免下次点编辑读到旧数据。
+              personas[personaIdx] = updated;
+              renderPersonas(container, personas, record);
+              KOCApi.showToast("已保存修改：" + (updated.name || "未命名"), "success");
+              return true;
+            },
+          });
         });
       });
     }
@@ -1168,8 +1246,10 @@
             }
             await copyToClipboard(text);
             KOCApi.showToast("已复制简介（" + text.length + " 字）", "success");
-          } else if (/换一版/.test(label)) {
-            // 重跑一次主生成（DeepSeek 每次输出会有变化，足以"换一版"）
+          } else if (/重新生成|换一版/.test(label)) {
+            // 重跑一次主生成（DeepSeek 每次输出会有变化）。
+            // 兼容旧文案"换一版"——上线后用户的浏览器缓存里 HTML 还可能停留在
+            // 旧版本，匹配两者都能命中，避免某段时间内"按了没反应"。
             KOCApi.showToast("正在重新生成…", "info");
             runGenerate();
           }
@@ -1441,5 +1521,6 @@
     bindSkeletonForm();
     bindSeoForm();
     bindCommentsForm();
+    bindGotoT2V();
   });
 })();

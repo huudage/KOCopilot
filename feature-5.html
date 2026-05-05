@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>解说视频生成（实验）— KOCopilot</title>
+    <meta
+      name="description"
+      content="基于脚本一键生成短视频片段（默认智谱清影 CogVideoX-3，5 或 10 秒），可下载 MP4 直接发布。"
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="app-screens.css" />
+    <style>
+      /* feature-5 专属补丁——本页不需要复用，行内放置避免污染全局 */
+      .t2v-form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 0.8rem;
+        margin: 0.9rem 0;
+      }
+      .t2v-form-row label {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+        font-size: 0.85rem;
+        color: var(--ink-muted);
+      }
+      .t2v-form-row select,
+      .t2v-form-row .t2v-checkbox {
+        font-size: 0.95rem;
+        padding: 0.6rem 0.8rem;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--surface);
+      }
+      .t2v-form-row .t2v-checkbox {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      .t2v-counter {
+        text-align: right;
+        font-size: 0.78rem;
+        color: var(--ink-muted);
+        margin-top: 0.2rem;
+      }
+      .t2v-loading {
+        text-align: center;
+        padding: 3rem 1rem;
+      }
+      .t2v-loading .t2v-spinner {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        border: 5px solid var(--line);
+        border-top-color: var(--primary);
+        animation: t2vSpin 1s linear infinite;
+        margin: 0 auto 1.4rem;
+      }
+      @keyframes t2vSpin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .t2v-meta {
+        display: flex;
+        justify-content: center;
+        gap: 1.2rem;
+        flex-wrap: wrap;
+        font-size: 0.85rem;
+        color: var(--ink-muted);
+      }
+      .t2v-meta code {
+        background: var(--bg-deep);
+        padding: 0 0.35rem;
+        border-radius: 4px;
+        font-size: 0.78rem;
+        color: var(--ink);
+      }
+      .t2v-result-video {
+        display: block;
+        width: 100%;
+        max-width: 480px;
+        margin: 0 auto 1rem;
+        background: #000;
+        border-radius: 14px;
+        box-shadow: var(--shadow-lg);
+      }
+      .t2v-error {
+        background: linear-gradient(135deg, #fff 0%, #fef2f2 100%);
+        border: 1px solid #fecaca;
+        padding: 1.4rem;
+        border-radius: 14px;
+        color: #991b1b;
+      }
+      .t2v-tips {
+        background: var(--bg-deep);
+        border-left: 3px solid var(--primary);
+        padding: 0.9rem 1.1rem;
+        margin: 1rem 0;
+        border-radius: 6px;
+        font-size: 0.86rem;
+        color: var(--ink-muted);
+      }
+      .t2v-tips b {
+        color: var(--ink);
+      }
+    </style>
+  </head>
+  <body>
+    <header class="koc-topbar" role="banner">
+      <div class="koc-topbar__inner">
+        <a class="koc-brand" href="index.html">KOCopilot</a>
+        <nav class="koc-nav" aria-label="主功能">
+          <a href="workspace.html">工作台</a>
+          <a href="feature-2.html">人设生成</a>
+          <a href="feature-1.html">爆款拆解</a>
+          <a href="feature-3.html">标题车间</a>
+          <a href="feature-4.html">评论分拣</a>
+        </nav>
+        <div class="koc-nav koc-nav--muted">
+          <a href="index.html">产品说明</a>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <header class="koc-hero">
+        <span class="koc-badge">v0.9 实验功能 · 智谱清影 CogVideoX-3</span>
+        <h1>解说<em>视频生成</em></h1>
+        <p class="koc-lead">
+          脚本写完了，但不愿出镜？把第 4 步的脚本带过来，AI 直接生成 <b>短视频片段</b>（默认 5 秒，可在服务端配置为 10 秒），可下载 MP4 拼到剪映里。官网主推 <b>CogVideoX-3</b>：约 ¥1/次、30–120 秒级返回。
+        </p>
+      </header>
+
+      <!-- ============================================================ -->
+      <!-- 阶段 1：输入提示词                                          -->
+      <!-- ============================================================ -->
+      <article class="koc-panel" data-koc-stage="input" hidden>
+        <div class="koc-panel__head">
+          <div>
+            <h2>1. 描述要生成什么画面</h2>
+            <p>
+              建议结构：<b>主体（描述）+ 环境 + 镜头 / 光线 + 氛围</b>。例：
+              <em>"一杯冰美式咖啡（特写镜头），木桌、暖色台灯、窗外清晨光线，水雾缓慢冒出。"</em>
+            </p>
+          </div>
+          <button
+            class="btn btn-ghost sm"
+            type="button"
+            data-koc-action="import-script"
+            title="读取最近一次脚本生成结果，自动填充提示词"
+          >从最近脚本带入</button>
+        </div>
+
+        <textarea
+          id="t2v-prompt"
+          class="koc-comment-input"
+          rows="5"
+          placeholder="例：镜头从三瓶护肤品平移到三张成分表，红笔圈出相同成分；木桌、自然光、平静专业的氛围。"
+          maxlength="500"
+          aria-label="视频提示词"
+        ></textarea>
+        <div class="t2v-counter">
+          <span data-koc-prompt-counter>0 / 500</span>
+        </div>
+
+        <div class="t2v-form-row">
+          <label>
+            尺寸（默认 9:16 竖屏）
+            <select id="t2v-size">
+              <option value="720x1280" selected>720 × 1280（9:16 竖屏 · 默认 · CogVideoX-3）</option>
+              <option value="1080x1920">1080 × 1920（9:16 竖屏 · 1080P）</option>
+              <option value="1280x720">1280 × 720（16:9 横屏）</option>
+              <option value="1920x1080">1920 × 1080（16:9 横屏 · 1080P）</option>
+              <option value="1024x1024">1024 × 1024（1:1 方屏）</option>
+              <option value="2048x1080">2048 × 1080（宽银幕）</option>
+              <option value="3840x2160">3840 × 2160（4K）</option>
+              <option value="960x1280">960 × 1280（9:16 · 仅 cogvideox-2 / flash）</option>
+              <option value="1280x960">1280 × 960（4:3 · 仅 cogvideox-2 / flash）</option>
+              <option value="720x480">720 × 480（标清 · 仅 cogvideox-2 / flash）</option>
+            </select>
+          </label>
+          <label>
+            质量（默认 speed）
+            <select id="t2v-quality">
+              <option value="speed" selected>speed（30-60 秒返回，画质中等）</option>
+              <option value="quality">quality（60-120 秒返回，画质更稳）</option>
+            </select>
+          </label>
+          <label class="t2v-checkbox">
+            <input type="checkbox" id="t2v-with-audio" />
+            <span>加 AI 背景音轨</span>
+          </label>
+        </div>
+
+        <div class="t2v-tips">
+          <b>计费提醒：</b>默认对接智谱 <strong>CogVideoX-3</strong>（官网主推）：约 <strong>¥1/次</strong>（5 或 10 秒，视服务端 <code>ZHIPU_VIDEO_DURATION</code>）。若将 <code>ZHIPU_VIDEO_MODEL</code> 改为 <code>cogvideox-2</code>，约为 ¥0.5/次（固定约 6 秒）。点击「开始生成」即扣费 1 次，**失败任务不扣费**。
+        </div>
+
+        <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 1rem;">
+          <button class="btn btn-primary" type="button" data-koc-action="start-generate">开始生成视频</button>
+          <a class="btn btn-ghost" href="feature-1.html">← 返回脚本生成</a>
+        </div>
+      </article>
+
+      <!-- ============================================================ -->
+      <!-- 阶段 2：任务进行中                                            -->
+      <!-- ============================================================ -->
+      <article class="koc-panel" data-koc-stage="loading" hidden>
+        <div class="t2v-loading">
+          <div class="t2v-spinner" aria-hidden="true"></div>
+          <h2 style="margin: 0 0 0.5rem;">视频生成中…</h2>
+          <p style="margin: 0 0 1.4rem; color: var(--ink-muted);">
+            CogVideoX-3 平均 30–120 秒返回；高峰时段更长。请保持本页打开。
+          </p>
+          <div class="t2v-meta">
+            <span>已耗时 <b data-koc-elapsed>0s</b></span>
+            <span>提供方：<code data-koc-provider>-</code></span>
+            <span>task_id：<code data-koc-task-id>-</code></span>
+          </div>
+          <div style="margin-top: 1.6rem;">
+            <button class="btn btn-ghost sm" type="button" data-koc-action="regenerate">取消并返回输入</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- ============================================================ -->
+      <!-- 阶段 3：成功                                                  -->
+      <!-- ============================================================ -->
+      <article class="koc-panel" data-koc-stage="result" hidden>
+        <div class="koc-panel__head">
+          <div>
+            <h2>✓ 视频已生成</h2>
+            <p>下方可在线播放；点「下载 MP4」可保存到本地导入剪映/万兴/必剪等做后期。</p>
+          </div>
+          <span class="koc-pill">CogVideoX-3 · 默认 5s</span>
+        </div>
+
+        <video
+          id="t2v-result-video"
+          class="t2v-result-video"
+          controls
+          playsinline
+          preload="metadata"
+        ></video>
+
+        <div class="t2v-meta" style="margin-bottom: 1rem;">
+          <span>用时：<b data-koc-result-duration>-</b></span>
+          <span>task_id：<code data-koc-result-task-id>-</code></span>
+        </div>
+
+        <details style="margin: 0 auto 1rem; max-width: 480px; font-size: 0.85rem; color: var(--ink-muted);">
+          <summary style="cursor: pointer;">查看本次提示词</summary>
+          <p
+            data-koc-result-prompt
+            style="white-space: pre-wrap; padding: 0.6rem 0.8rem; background: var(--bg-deep); border-radius: 6px; margin-top: 0.4rem;"
+          >-</p>
+        </details>
+
+        <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center;">
+          <a
+            class="btn btn-primary"
+            data-koc-action="download-video"
+            href="#"
+            download
+          >下载 MP4</a>
+          <button class="btn btn-ghost" type="button" data-koc-action="regenerate">重新生成</button>
+          <a class="btn btn-ghost" href="feature-3.html">→ 去标题车间</a>
+        </div>
+      </article>
+
+      <!-- ============================================================ -->
+      <!-- 阶段 4：失败                                                  -->
+      <!-- ============================================================ -->
+      <article class="koc-panel" data-koc-stage="error" hidden>
+        <div class="koc-panel__head">
+          <div>
+            <h2>⚠ 生成失败</h2>
+            <p>失败任务**不扣费**（智谱按成功结算）。请按下方提示调整后重试。</p>
+          </div>
+        </div>
+
+        <div class="t2v-error">
+          <p data-koc-error style="margin: 0;">未知错误</p>
+        </div>
+
+        <div class="t2v-tips" style="margin-top: 1rem;">
+          <b>常见原因 & 处理：</b>
+          <ul style="margin: 0.4rem 0 0; padding-left: 1.2rem;">
+            <li>提示词违反内容审核 → 改为具象画面描述（避开人物/品牌/政治主题）</li>
+            <li>智谱 API Key 未配置 → 检查 server/.env 的 ZHIPU_API_KEY</li>
+            <li>账户余额不足 → 去 <a href="https://open.bigmodel.cn/usercenter/finance" target="_blank" rel="noopener">智谱控制台</a> 充值（最低 10 元）</li>
+            <li>超过 8 分钟未完成 → 智谱当前可能在排队，可稍后再试</li>
+          </ul>
+        </div>
+
+        <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; margin-top: 1rem;">
+          <button class="btn btn-primary" type="button" data-koc-action="regenerate">回到输入页重试</button>
+          <a class="btn btn-ghost" href="feature-1.html">← 返回脚本生成</a>
+        </div>
+      </article>
+    </main>
+
+    <footer class="koc-footer">
+      KOCopilot · 创作者智能副驾 · <a href="index.html">产品说明</a>
+    </footer>
+    <script src="api.js" defer></script>
+    <script src="t2v.js" defer></script>
+  </body>
+</html>
