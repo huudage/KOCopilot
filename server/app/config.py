@@ -41,6 +41,18 @@ class Settings(BaseSettings):
     llm_temperature: float = Field(default=0.7, ge=0.0, le=2.0)
     llm_timeout_seconds: int = Field(default=60, ge=5, le=300)
     llm_max_tokens: int = Field(default=2048, ge=128, le=8192)
+    # 「拆解骨架」JSON（hook/body/cta/template）较长；沿用全局 max_tokens 时易被截断导致非合法 JSON。
+    llm_skeleton_max_tokens: int = Field(default=4096, ge=512, le=8192)
+    # 人设：3 套方案 × 多字段，输出偏长。
+    llm_persona_max_tokens: int = Field(default=3072, ge=512, le=8192)
+    # 原创脚本：scenes + full_text 重复叙事，最易截断。
+    llm_script_max_tokens: int = Field(default=6144, ge=512, le=8192)
+    # 标题车间：5+ 标题 + 简介 + 标签簇。
+    llm_seo_max_tokens: int = Field(default=3072, ge=512, le=8192)
+    # 评论分拣：高价值多条 × 三种语气回复，JSON 体积大。
+    llm_comments_max_tokens: int = Field(default=4096, ge=512, le=8192)
+    # 引导问答：单轮 JSON 较小；默认沿用 llm_max_tokens，单独可调以便与长上下文路由区分。
+    llm_qa_max_tokens: int = Field(default=2048, ge=512, le=8192)
 
     # === ASR (Doubao 极速版 / turbo / flash) ===
     # 极速版 = 一次请求拿结果 + 支持 base64 inline 上传 → 不再需要公网 URL（PUBLIC_BASE_URL 已废弃）。

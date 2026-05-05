@@ -13,6 +13,7 @@ import time
 
 from fastapi import APIRouter, HTTPException, Request
 
+from ..config import get_settings
 from ..schemas import ScriptRequest, ScriptResponse, ScriptScene
 from ..services.llm_client import LLMError, get_llm_client
 from ..services.prompts import SCRIPT_SYSTEM_PROMPT
@@ -30,9 +31,14 @@ async def generate_script(req: ScriptRequest, request: Request) -> ScriptRespons
 
     user_msg = _build_user_message(req)
 
-    client = get_llm_client()
+    settings = get_settings()
+    client = get_llm_client(settings)
     try:
-        data = await client.complete_json(SCRIPT_SYSTEM_PROMPT, user_msg)
+        data = await client.complete_json(
+            SCRIPT_SYSTEM_PROMPT,
+            user_msg,
+            max_tokens=settings.llm_script_max_tokens,
+        )
     except LLMError as e:
         log.error("[%s] script LLM error: %s", trace_id, e)
         raise HTTPException(status_code=502, detail=f"LLM 调用失败：{e}") from e

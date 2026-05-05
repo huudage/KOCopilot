@@ -13,6 +13,7 @@ from ..schemas import (
     SkeletonRequest,
     SkeletonResponse,
 )
+from ..config import get_settings
 from ..services.llm_client import LLMError, get_llm_client
 from ..services.prompts import SKELETON_SYSTEM_PROMPT
 
@@ -30,9 +31,14 @@ async def extract_skeleton(req: SkeletonRequest, request: Request) -> SkeletonRe
     persona_block = f"\n【当前人设上下文】{req.persona_hint}" if req.persona_hint else ""
     user_msg = f"【视频台词】\n{req.transcript}{persona_block}"
 
-    client = get_llm_client()
+    settings = get_settings()
+    client = get_llm_client(settings)
     try:
-        data = await client.complete_json(SKELETON_SYSTEM_PROMPT, user_msg)
+        data = await client.complete_json(
+            SKELETON_SYSTEM_PROMPT,
+            user_msg,
+            max_tokens=settings.llm_skeleton_max_tokens,
+        )
     except LLMError as e:
         log.error("[%s] skeleton LLM error: %s", trace_id, e)
         raise HTTPException(status_code=502, detail=f"LLM 调用失败：{e}") from e

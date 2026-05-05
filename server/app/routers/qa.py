@@ -13,6 +13,7 @@ import time
 
 from fastapi import APIRouter, HTTPException, Request
 
+from ..config import get_settings
 from ..schemas import MAX_QA_ROUNDS, QAOption, QARequest, QAResponse
 from ..services.llm_client import LLMError, get_llm_client
 from ..services.prompts import QA_SYSTEM_PROMPT
@@ -55,9 +56,14 @@ async def qa_next(req: QARequest, request: Request) -> QAResponse:
     next_round = answered + 1
     user_msg = _build_user_message(req, next_round)
 
-    client = get_llm_client()
+    settings = get_settings()
+    client = get_llm_client(settings)
     try:
-        data = await client.complete_json(QA_SYSTEM_PROMPT, user_msg)
+        data = await client.complete_json(
+            QA_SYSTEM_PROMPT,
+            user_msg,
+            max_tokens=settings.llm_qa_max_tokens,
+        )
     except LLMError as e:
         log.error("[%s] qa LLM error: %s", trace_id, e)
         raise HTTPException(status_code=502, detail=f"LLM 调用失败：{e}") from e

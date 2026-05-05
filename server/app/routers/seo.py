@@ -6,6 +6,7 @@ import time
 
 from fastapi import APIRouter, HTTPException, Request
 
+from ..config import get_settings
 from ..schemas import SEORequest, SEOResponse, TagCluster, TitleCandidate
 from ..services.llm_client import LLMError, get_llm_client
 from ..services.prompts import SEO_SYSTEM_PROMPT
@@ -26,9 +27,14 @@ async def generate_titles(req: SEORequest, request: Request) -> SEOResponse:
     # prompt — the system prompt is already tuned for douyin specifically.
     user_msg = f"【脚本/口播稿】\n{req.script}{persona_block}"
 
-    client = get_llm_client()
+    settings = get_settings()
+    client = get_llm_client(settings)
     try:
-        data = await client.complete_json(SEO_SYSTEM_PROMPT, user_msg)
+        data = await client.complete_json(
+            SEO_SYSTEM_PROMPT,
+            user_msg,
+            max_tokens=settings.llm_seo_max_tokens,
+        )
     except LLMError as e:
         log.error("[%s] seo LLM error: %s", trace_id, e)
         raise HTTPException(status_code=502, detail=f"LLM 调用失败：{e}") from e

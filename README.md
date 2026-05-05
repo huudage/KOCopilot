@@ -126,6 +126,8 @@ DEEPSEEK_API_KEY=sk-xxxxxxxxxxxx
 
 然后 `.\stop.ps1; $env:SKIP_INSTALL=1; .\run.ps1`（或 `./stop.sh; SKIP_INSTALL=1 ./run.sh`）即可。
 
+若任意 DeepSeek 步骤报错「模型连续两次未返回合法 JSON」，且后端日志里的 snippet 像**半截 JSON**，多半是 **completion 被 `max_tokens` 截断**。可在 `server/.env` 按需提高对应上限（均为最大 8192）：`LLM_SKELETON_MAX_TOKENS`、`LLM_SCRIPT_MAX_TOKENS`（脚本含 `full_text` 最长）、`LLM_COMMENTS_MAX_TOKENS`、`LLM_PERSONA_MAX_TOKENS`、`LLM_SEO_MAX_TOKENS`、`LLM_QA_MAX_TOKENS`；或缩短输入台词/评论再试。
+
 > **注意**：DeepSeek API 是**真实付费**的。每次点击「生成 / 拆解 / 分拣」都会扣 token。
 > v0.1 没做配额限制；如需自我保护可临时切回 `LLM_PROVIDER=mock`。
 

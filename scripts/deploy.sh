@@ -13,6 +13,13 @@
 #   ssh kocopilot@server
 #   cd /opt/kocopilot
 #   bash scripts/deploy.sh
+#
+# If the server repo has diverged from origin (e.g. past `git am` / hotfix), plain
+# `git pull --ff-only` will fail. Either merge/rebase locally and push, or on the
+# server sync to remote explicitly:
+#   GIT_UPDATE_MODE=reset-tracking bash scripts/deploy.sh
+# This runs `git fetch` then `git reset --hard origin/<current-branch>` after
+# snapshotting the previous commit for rollback.
 # ---------------------------------------------------------------------------
 set -Eeuo pipefail
 
@@ -22,6 +29,8 @@ SERVICE_NAME="${SERVICE_NAME:-kocopilot-server}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:5001/api/health}"
 HEALTH_TIMEOUT_SECONDS="${HEALTH_TIMEOUT_SECONDS:-30}"
 LOG_FILE="${LOG_FILE:-${PROJECT_DIR}/var/logs/deploy.log}"
+# ff-only (default) | reset-tracking — see header comments.
+GIT_UPDATE_MODE="${GIT_UPDATE_MODE:-ff-only}"
 
 # ---- Helpers ----
 ts()  { date '+%Y-%m-%d %H:%M:%S'; }
@@ -47,10 +56,21 @@ fi
 PREV_COMMIT="$(git rev-parse HEAD)"
 log "previous commit: ${PREV_COMMIT}"
 
-# ---- 2. git pull ----
-log "git fetch + pull..."
+# ---- 2. git update ----
+log "git fetch + update (mode=${GIT_UPDATE_MODE})..."
 git fetch --all --prune
-git pull --ff-only
+CURRENT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
+case "${GIT_UPDATE_MODE}" in
+  ff-only)
+    git pull --ff-only
+    ;;
+  reset-tracking)
+    git reset --hard "origin/${CURRENT_BRANCH}"
+    ;;
+  *)
+    die "unknown GIT_UPDATE_MODE=${GIT_UPDATE_MODE} (use ff-only or reset-tracking)"
+    ;;
+esac
 
 NEW_COMMIT="$(git rev-parse HEAD)"
 if [[ "${PREV_COMMIT}" == "${NEW_COMMIT}" ]]; then
