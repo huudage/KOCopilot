@@ -172,7 +172,7 @@ export async function startAsrFlow(file, hooks = {}) {
   if (audioBlob.size > MAX_DIRECT_UPLOAD_BYTES) {
     throw new Error(
       `抽取后音频仍然 ${(audioBlob.size / 1024 / 1024).toFixed(1)} MB，超过 25 MB 上限。` +
-        "请缩短视频时长（建议 ≤ 5 分钟）。"
+        "请缩短视频或压缩音频（建议单次上传素材约 1 分钟量级；更长易导致抽取体积超限）。"
     );
   }
 

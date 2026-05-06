@@ -10,6 +10,9 @@
 (() => {
   "use strict";
 
+  /** 与后端 `schemas.TRANSCRIPT_MAX_CHARS` 保持一致，超长则拒绝以免 422。 */
+  const TRANSCRIPT_MAX_CHARS = 50000;
+
   // ============================================================================
   // Cosmetics — copy buttons / QA option toggles / drop-zone affordances.
   // ============================================================================
@@ -571,7 +574,7 @@
           copyBtn.disabled = false;
           copyBtn.dataset.fullText = resp.full_text || "";
         }
-        // 启用「→ 生成解说视频」按钮（v0.9 新增）。
+        // 启用「→ 分镜素材生成」按钮（v0.9 新增）。
         // 脚本未完成时该按钮 disabled，避免用户跳到 feature-5 后空表单干瞪眼。
         const t2vBtn = document.querySelector('[data-koc-action="goto-t2v"]');
         if (t2vBtn) t2vBtn.disabled = false;
@@ -601,7 +604,7 @@
             sessionStorage.setItem("koc.lastScriptForSeo", resp.full_text);
           }
         } catch (_) {}
-        // 把脚本结构化对象 + full_text 存给「解说视频生成」：默认提示词为原创脚本全文（见 t2v.js）。
+        // 把脚本结构化对象 + full_text 存给「分镜素材生成」：默认提示词为原创脚本全文（见 t2v.js）。
         try {
           sessionStorage.setItem("koc.lastScriptForT2V", JSON.stringify({
             full_text: resp.full_text || "",
@@ -663,7 +666,7 @@
   window.KOCQAFlow = KOCQAFlow;
 
   // ============================================================================
-  // 「→ 生成解说视频」按钮（v0.9 新增，第 4 步脚本面板内）
+  // 「→ 分镜素材生成」按钮（v0.9 新增，第 4 步脚本面板内）
   // ----------------------------------------------------------------------------
   // 为什么不直接用 <a href>：
   //   要求「脚本未生成时按钮不可用」，<a> 没原生 disabled。用 <button> + JS 跳转
@@ -974,7 +977,9 @@
         '<div style="display:flex; gap:0.6rem; margin-top:0.6rem; flex-wrap: wrap;">' +
         '<button class="btn btn-primary" type="button" data-koc-action="extract-skeleton">用 AI 拆解骨架</button>' +
         '<span style="font-size:0.78rem; color: var(--ink-muted); align-self:center;">' +
-        " · 文本长度 ≥ 20 字，建议 ≤ 5 分钟视频台词" +
+        " · 文本长度 ≥ 20 字，上限约 " +
+        TRANSCRIPT_MAX_CHARS.toLocaleString("zh-CN") +
+        " 字（与后端一致）；更长请分段" +
         "</span></div>";
       uploadPanel.appendChild(block);
     }
@@ -987,6 +992,15 @@
       const transcript = (input.value || "").trim();
       if (transcript.length < 20) {
         KOCApi.showToast("请粘贴至少 20 字的视频台词。", "error");
+        return;
+      }
+      if (transcript.length > TRANSCRIPT_MAX_CHARS) {
+        KOCApi.showToast(
+          "台词超过 " +
+            TRANSCRIPT_MAX_CHARS.toLocaleString("zh-CN") +
+            " 字上限，请删减或分段后再拆解。",
+          "error"
+        );
         return;
       }
 

@@ -29,6 +29,7 @@ from fastapi import APIRouter, HTTPException, Path, Request
 from ..config import get_settings
 from ..schemas import T2VQueryResponse, T2VSubmitRequest, T2VSubmitResponse
 from ..services.t2v_client import T2VError, get_t2v_client
+from ..services.t2v_shot_prompts import merge_shot_preview_prompt
 
 
 router = APIRouter()
@@ -66,6 +67,14 @@ async def submit(request: Request, payload: T2VSubmitRequest) -> T2VSubmitRespon
     prompt = (payload.prompt or "").strip()
     if not prompt:
         raise HTTPException(status_code=400, detail="prompt 不能为空")
+
+    duration_override: Optional[int] = None
+    if payload.shot_preview_mode:
+        prompt = merge_shot_preview_prompt(prompt, settings.t2v_max_prompt_chars)
+        duration_override = 10
+    elif payload.duration_seconds in (5, 10):
+        duration_override = payload.duration_seconds
+
     if len(prompt) > settings.t2v_max_prompt_chars:
         raise HTTPException(
             status_code=400,
@@ -77,8 +86,15 @@ async def submit(request: Request, payload: T2VSubmitRequest) -> T2VSubmitRespon
 
     user_id = _resolve_user_id(request, payload.user_id)
     log.info(
-        "[%s] t2v submit | size=%s | quality=%s | with_audio=%s | prompt_len=%d | user=%s",
-        trace_id, payload.size, payload.quality, payload.with_audio, len(prompt), user_id,
+        "[%s] t2v submit | size=%s | quality=%s | with_audio=%s | shot_preview=%s | dur=%s | prompt_len=%d | user=%s",
+        trace_id,
+        payload.size,
+        payload.quality,
+        payload.with_audio,
+        payload.shot_preview_mode,
+        duration_override,
+        len(prompt),
+        user_id,
     )
 
     client = get_t2v_client(settings)
@@ -89,6 +105,7 @@ async def submit(request: Request, payload: T2VSubmitRequest) -> T2VSubmitRespon
             quality=payload.quality,
             with_audio=payload.with_audio,
             user_id=user_id,
+            duration_seconds=duration_override,
         )
     except T2VError as e:
         log.error("[%s] t2v submit error | code=%s upstream=%s msg=%s",
@@ -122,8 +139,9 @@ async def query(
     """
     trace_id = getattr(request.state, "trace_id", "-")
     started = time.perf_counter()
+    settings = get_settings()
 
-    client = get_t2v_client()
+    client = get_t2v_client(settings)
     try:
         result = await client.query(task_id)
     except T2VError as e:

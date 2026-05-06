@@ -141,7 +141,7 @@
                 <div class="koc-uploader__icon">↓</div>
                 <p class="koc-uploader__title">点击选择 / 拖拽 视频或音频</p>
                 <p class="koc-uploader__hint">
-                  支持 mp4 / mov / mp3 / m4a / wav；建议时长 ≤ 5 分钟，文件 ≤ 200 MB。
+                  支持 mp4 / mov / mp3 / m4a / wav；<strong>建议时长约 1 分钟</strong>（更长亦可，解析更慢、体积更大），文件 ≤ 200 MB。
                 </p>
                 <input
                   id="koc-asr-file"
@@ -179,7 +179,7 @@
                   用 AI 拆解骨架
                 </button>
                 <span style="font-size:0.78rem; color: var(--ink-muted);">
-                  · 文本长度 ≥ 20 字，建议 ≤ 5 分钟视频台词
+                  · 文本长度 ≥ 20 字，上限约 5 万字（与后端一致）；台词过长时请分段拆解
                 </span>
               </div>
             </div>
@@ -337,7 +337,7 @@
               <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                 <button class="btn btn-ghost sm" type="button" data-koc-action="copy-script" disabled>复制纯文本</button>
                 <button class="btn btn-ghost sm" type="button" data-koc-action="goto-t2v" disabled
-                  title="带着原创脚本进入「解说视频生成」（提示词默认为脚本全文）">→ 生成解说视频</button>
+                  title="带着原创脚本进入「分镜素材生成」（素材描述默认为脚本全文，可在该页再编辑）">→ 分镜素材生成</button>
                 <a class="btn btn-primary sm" href="feature-3.html">下一步：标题车间 →</a>
               </div>
             </div>

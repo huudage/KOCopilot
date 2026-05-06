@@ -142,6 +142,7 @@ class T2VClient(ABC):
         quality: Literal["speed", "quality"] = "speed",
         with_audio: bool = False,
         user_id: str,
+        duration_seconds: Optional[int] = None,
     ) -> SubmitResult:
         """Submit a generation task. Returns immediately with task_id.
 
@@ -153,6 +154,8 @@ class T2VClient(ABC):
                      because creators usually layer their own narration/BGM.
           user_id:   End-user marker (per Zhipu API spec, 6-128 chars). Required
                      for moderation traceability.
+          duration_seconds: When 5 or 10 and model is cogvideox-3, overrides Settings
+                     duration; otherwise None uses config default.
         """
 
     @abstractmethod
@@ -203,6 +206,7 @@ class MockT2VClient(T2VClient):
         quality: Literal["speed", "quality"] = "speed",
         with_audio: bool = False,
         user_id: str,
+        duration_seconds: Optional[int] = None,
     ) -> SubmitResult:
         # Simulate network latency so frontend's submit-button spinner is visible.
         await asyncio.sleep(0.4)
@@ -215,8 +219,8 @@ class MockT2VClient(T2VClient):
             model="cogvideox-2-mock",
         )
         log.info(
-            "mock t2v submit | task_id=%s | size=%s | quality=%s | prompt_len=%d",
-            task_id, size, quality, len(prompt),
+            "mock t2v submit | task_id=%s | size=%s | quality=%s | prompt_len=%d | dur=%s",
+            task_id, size, quality, len(prompt), duration_seconds,
         )
         return SubmitResult(task_id=task_id, request_id=request_id, model="cogvideox-2-mock")
 
@@ -275,6 +279,7 @@ class ZhipuT2VClient(T2VClient):
         quality: Literal["speed", "quality"] = "speed",
         with_audio: bool = False,
         user_id: str,
+        duration_seconds: Optional[int] = None,
     ) -> SubmitResult:
         request_id = f"koc-{uuid.uuid4().hex}"
         url = f"{self._base_url}/videos/generations"
@@ -291,7 +296,10 @@ class ZhipuT2VClient(T2VClient):
         }
         if "cogvideox-3" in (self._model or "").lower():
             payload["fps"] = self._fps
-            payload["duration"] = self._duration
+            eff_dur = self._duration
+            if duration_seconds in (5, 10):
+                eff_dur = duration_seconds
+            payload["duration"] = eff_dur
 
         started = time.perf_counter()
         try:

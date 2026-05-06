@@ -34,6 +34,34 @@ def test_submit_rejects_oversize_prompt(client):
     assert r.status_code == 422
 
 
+def test_submit_shot_preview_mode_returns_200(client):
+    """shot_preview_mode merges server-side; still mock round-trip."""
+    body = {
+        "prompt": "竖屏桌面，产品特写，柔和侧光。",
+        "size": "720x1280",
+        "quality": "speed",
+        "with_audio": False,
+        "shot_preview_mode": True,
+    }
+    r = client.post("/api/t2v/submit", json=body)
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["task_id"].startswith("mock-")
+
+
+def test_submit_accepts_duration_seconds(client):
+    body = {
+        "prompt": "一杯冰美式咖啡，木桌、暖光台灯、清晨光线，水雾缓慢冒出。",
+        "size": "720x1280",
+        "quality": "speed",
+        "with_audio": False,
+        "duration_seconds": 10,
+        "shot_preview_mode": False,
+    }
+    r = client.post("/api/t2v/submit", json=body)
+    assert r.status_code == 200, r.text
+
+
 def test_submit_rejects_bad_size(client):
     """size must be from the merged CogVideoX-3 / CogVideoX-2 enum (schemas.T2VSize)."""
     body = {"prompt": "test prompt", "size": "9999x9999"}

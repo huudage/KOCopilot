@@ -11,6 +11,10 @@ from typing import List, Literal, Optional
 from pydantic import BaseModel, Field
 
 
+# 拆解骨架 / 问答 / 脚本链路共用：粘贴台词或 ASR 全文上限（中文台词约 1 分钟数千字，留足余量）。
+TRANSCRIPT_MAX_CHARS = 50000
+
+
 # =========================================================================
 # Health
 # =========================================================================
@@ -52,7 +56,12 @@ class PersonaResponse(BaseModel):
 # =========================================================================
 class SkeletonRequest(BaseModel):
     """v0.1：只接受文本输入；ASR 路径在 /api/asr/transcribe 单独提供。"""
-    transcript: str = Field(..., min_length=20, max_length=10000, description="视频台词文本")
+    transcript: str = Field(
+        ...,
+        min_length=20,
+        max_length=TRANSCRIPT_MAX_CHARS,
+        description="视频台词文本",
+    )
     persona_hint: Optional[str] = Field(default=None, max_length=500, description="用户当前人设上下文（可选）")
 
 
@@ -188,7 +197,11 @@ class QARequest(BaseModel):
     """每一轮问答的请求体；前端在每次 /next 调用时回传完整 history。"""
 
     skeleton: dict = Field(..., description="第 2 步生成的骨架（hook/body/cta）原样回传")
-    transcript: Optional[str] = Field(default=None, max_length=10000, description="原视频台词（可选，给 AI 补充上下文）")
+    transcript: Optional[str] = Field(
+        default=None,
+        max_length=TRANSCRIPT_MAX_CHARS,
+        description="原视频台词（可选，给 AI 补充上下文）",
+    )
     persona_hint: Optional[str] = Field(default=None, max_length=500, description="当前人设")
     # 用户在第 3 步开始前自行填的「创作要求」——时长 / 节奏 / 风格 / 自由补充。
     # 这个字段只是『软约束』：影响 LLM 出题选项的取向（如时长 = 30s 时 options 就该短促有冲击），
@@ -222,7 +235,7 @@ class ScriptRequest(BaseModel):
     skeleton: dict = Field(..., description="第 2 步骨架原样回传")
     answers: List[QAAnswer] = Field(default_factory=list, max_length=MAX_QA_ROUNDS)
     persona_hint: Optional[str] = Field(default=None, max_length=500)
-    transcript: Optional[str] = Field(default=None, max_length=10000)
+    transcript: Optional[str] = Field(default=None, max_length=TRANSCRIPT_MAX_CHARS)
     # 与 QARequest.brief 一致——前端把第 3 步开始前用户填的创作要求继续透传到第 4 步，
     # 让脚本生成阶段做到「时长/节奏/风格」与出题阶段保持一致。
     brief: Optional[str] = Field(default=None, max_length=1000, description="用户自填的创作要求（时长/节奏/风格/自由补充）")
@@ -266,7 +279,7 @@ class ASRResponse(BaseModel):
 #     改为 cogvideox-2，可选 720x480 / 960x1280 等；与 v3 叠用时以智谱接口校验为准）。
 #   - quality 默认 speed：速出优先；可切 quality。
 #   - with_audio 默认 false：KOC 一般自配口播/BGM。
-#   - duration / fps：由服务端 config（cogvideox-3）注入，不在此 schema 暴露，避免与 v2 冲突。
+#   - duration_seconds：可选；与 shot_preview_mode 配合见 routers/t2v.py。
 T2VSize = Literal[
     # CogVideoX-3（开放平台 OpenAPI 枚举）
     "1280x720",
@@ -311,6 +324,18 @@ class T2VSubmitRequest(BaseModel):
         min_length=6,
         max_length=128,
         description="终端用户唯一 ID（智谱内容审核用）；未提供则路由层自动生成。",
+    )
+    shot_preview_mode: bool = Field(
+        default=False,
+        description=(
+            "为 true 时：在服务端拼接「分镜演示」系统提示词（见 t2v_shot_prompts），"
+            "并将 cogvideox-3 单次生成时长固定为 10 秒（预期效果预览）。"
+            "此时 prompt 字段应只写所选分镜的画面/口播要点，不要自带长前缀。"
+        ),
+    )
+    duration_seconds: Optional[Literal[5, 10]] = Field(
+        default=None,
+        description="仅 cogvideox-3 写入智谱请求体；不设则用服务端环境变量默认。与 shot_preview_mode 同时出现时以分镜演示为准（10 秒）。",
     )
 
 

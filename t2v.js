@@ -1,43 +1,33 @@
 /**
  * KOCopilot — Text-to-Video page (feature-5.html) interactions.
  *
- * Single Responsibility: only feature-5 page lives here. Why a separate file?
- *   - interactions.js is already 1450+ lines covering 6 modules; adding T2V
- *     state-machine logic (poll loop, stage switcher) would push it past 2k.
- *   - T2V interaction is the only place that needs a polling loop — keeping it
- *     localized makes the contract clear: this module owns *one* page.
+ * Single Responsibility: only feature-5 page lives here.
  *
- * Stages (single source of truth for what's visible at any moment):
- *   "input"   → form for prompt / size / quality
- *   "loading" → task submitted, polling status
- *   "result"  → success, <video> + download
- *   "error"   → failure, retry button
- *
- * Polling design rationale:
- *   - 5s interval: CogVideoX P50 ≈ 30s, P95 ≈ 90s; polling more often wastes
- *     calls without lowering perceived latency.
- *   - 8 minute hard timeout: even a queued job in peak hours rarely exceeds
- *     this; if it does, the user can manually re-query later via task_id.
- *   - Single-flight: only one in-progress task per page (state.taskId). Users
- *     who want a second take must wait for the first or hit "重新生成".
+ * Shot workflow:
+ *   When sessionStorage holds a structured script (hook + scenes + cta), we render
+ *   radio choices. Submitting with a selection sends `shot_preview_mode: true` so
+ *   the server prepends a fixed instruction block and requests a 10s cogvideox-3 clip
+ *   (preview / expectation demo). Without structured shots, the textarea is a plain
+ *   prompt and `shot_preview_mode` is false.
  */
 (function () {
   "use strict";
 
-  // ---- Constants (per project rule: no magic numbers) ----
   const POLL_INTERVAL_MS = 5000;
-  const POLL_HARD_TIMEOUT_MS = 8 * 60 * 1000; // 8 minutes
-  const MAX_PROMPT_CHARS = 500; // mirrors backend t2v_max_prompt_chars
+  const POLL_HARD_TIMEOUT_MS = 8 * 60 * 1000;
+  const MAX_PROMPT_CHARS = 500;
+  const MAX_SHOT_BODY_CHARS = 450;
   const SS_KEY_LAST_SCRIPT = "koc.lastScriptForT2V";
   const ELAPSED_TICK_MS = 1000;
-  const VISUAL_HINT_TAKE = 2; // how many scenes' visual hints to merge into auto prompt
+  const VISUAL_HINT_TAKE = 2;
 
-  // ---- Page-level state ----
   const state = {
     taskId: null,
     pollAbort: null,
     elapsedTimerId: null,
     startedAt: 0,
+    shots: [],
+    selectedShotIndex: -1,
   };
 
   function $(sel) {
@@ -54,11 +44,6 @@
     return new Promise((r) => setTimeout(r, ms));
   }
 
-  // ============================================================================
-  // Prompt seeding — default: original script `full_text` (same as「复制纯文本」).
-  // Zhipu prompt hard cap = MAX_PROMPT_CHARS (500) — long scripts are head-truncated.
-  // Legacy session payloads without `full_text` fall back to scene visuals + hook.
-  // ============================================================================
   function buildPromptFromScript(scriptObj) {
     const out = { text: "", truncated: false };
     if (!scriptObj || typeof scriptObj !== "object") return out;
@@ -97,9 +82,116 @@
     }
   }
 
-  // ============================================================================
-  // Form bindings (input stage)
-  // ============================================================================
+  /**
+   * Build selectable shots; `body` is the user/shot slice sent as `prompt` when
+   * `shot_preview_mode` is true (server merges system prefix + caps at 500 chars).
+   */
+  function buildShots(scriptObj) {
+    const rows = [];
+    if (!scriptObj || typeof scriptObj !== "object") return rows;
+
+    function pushRow(id, label, parts) {
+      const body = parts
+        .filter(Boolean)
+        .map((p) => String(p).trim())
+        .filter(Boolean)
+        .join("；");
+      if (!body) return;
+      rows.push({ id, label, body: body.slice(0, MAX_SHOT_BODY_CHARS) });
+    }
+
+    const hook = typeof scriptObj.hook_narration === "string" ? scriptObj.hook_narration.trim() : "";
+    const scenes = Array.isArray(scriptObj.scenes) ? scriptObj.scenes : [];
+    const firstVisual =
+      scenes[0] && typeof scenes[0].visual === "string" ? scenes[0].visual.trim() : "";
+    if (hook) {
+      pushRow("hook", "Hook · 开场（约前 3 秒）", [firstVisual, hook]);
+    }
+
+    scenes.forEach((s, i) => {
+      if (!s || typeof s !== "object") return;
+      const ts = (s.timestamp || "").trim();
+      const title = (s.title || "分镜 " + (i + 1)).trim();
+      const lab = (ts ? ts + " · " : "") + title;
+      pushRow("scene-" + i, "正文 · " + lab, [s.visual, s.narration]);
+    });
+
+    const cta = typeof scriptObj.cta_narration === "string" ? scriptObj.cta_narration.trim() : "";
+    if (cta) {
+      pushRow("cta", "CTA · 收尾", [cta]);
+    }
+    return rows;
+  }
+
+  function applyShotSelection(idx, silent) {
+    state.selectedShotIndex = idx;
+    const ta = $("#t2v-prompt");
+    const row = state.shots[idx];
+    if (!ta || !row) return;
+    ta.value = row.body;
+    ta.dispatchEvent(new Event("input", { bubbles: true }));
+    if (!silent) {
+      KOCApi.showToast("已切换至：「" + row.label + "」", "info");
+    }
+  }
+
+  function renderShotRadios() {
+    const panel = document.getElementById("t2v-segment-panel");
+    const host = document.getElementById("t2v-shot-radios");
+    const hint = document.getElementById("t2v-shot-mode-hint");
+    if (!panel || !host) return;
+
+    const obj = readScriptFromSession();
+    state.shots = buildShots(obj);
+    state.selectedShotIndex = state.shots.length ? 0 : -1;
+
+    if (!state.shots.length) {
+      panel.hidden = true;
+      host.innerHTML = "";
+      if (hint) hint.hidden = true;
+      return;
+    }
+
+    panel.hidden = false;
+    if (hint) hint.hidden = false;
+    host.innerHTML = "";
+
+    state.shots.forEach((row, idx) => {
+      const wrap = document.createElement("div");
+      wrap.className = "t2v-shot-row";
+      const inp = document.createElement("input");
+      inp.type = "radio";
+      inp.name = "t2v-shot";
+      inp.value = String(idx);
+      inp.id = "t2v-shot-choice-" + idx;
+      if (idx === 0) inp.checked = true;
+
+      inp.addEventListener("change", () => {
+        if (inp.checked) applyShotSelection(idx, false);
+      });
+
+      const lab = document.createElement("label");
+      lab.htmlFor = inp.id;
+      const strong = document.createElement("strong");
+      strong.textContent = row.label;
+      lab.appendChild(strong);
+      const meta = document.createElement("span");
+      meta.className = "t2v-shot-meta";
+      const preview = row.body.length > 140 ? row.body.slice(0, 140) + "…" : row.body;
+      meta.textContent = preview;
+      lab.appendChild(meta);
+
+      wrap.appendChild(inp);
+      wrap.appendChild(lab);
+      wrap.addEventListener("click", (ev) => {
+        if (ev.target === inp) return;
+        inp.checked = true;
+        inp.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      host.appendChild(wrap);
+    });
+  }
+
   function bindPromptForm() {
     const ta = $("#t2v-prompt");
     const counter = document.querySelector("[data-koc-prompt-counter]");
@@ -114,6 +206,24 @@
     }
     ta.addEventListener("input", updateCount);
 
+    renderShotRadios();
+
+    if (state.shots.length) {
+      applyShotSelection(0, true);
+    } else if (!ta.value) {
+      const obj = readScriptFromSession();
+      if (obj) {
+        const result = buildPromptFromScript(obj);
+        ta.value = result.text;
+        if (result.truncated) {
+          KOCApi.showToast(
+            "原创脚本超过 " + MAX_PROMPT_CHARS + " 字，已截取前 " + MAX_PROMPT_CHARS + " 字作为素材描述（提示词）。",
+            "info"
+          );
+        }
+      }
+    }
+
     if (importBtn) {
       importBtn.addEventListener("click", () => {
         const obj = readScriptFromSession();
@@ -124,40 +234,29 @@
           );
           return;
         }
-        const result = buildPromptFromScript(obj);
-        ta.value = result.text;
-        updateCount();
-        if (result.truncated) {
-          KOCApi.showToast(
-            "原创脚本超过 " + MAX_PROMPT_CHARS + " 字，已截取前 " + MAX_PROMPT_CHARS + " 字作为视频提示词。",
-            "info"
-          );
+        renderShotRadios();
+        if (state.shots.length) {
+          applyShotSelection(0, true);
+          KOCApi.showToast("已载入脚本分镜列表，请选择一个分镜后生成演示。", "success");
         } else {
-          KOCApi.showToast("已载入原创脚本全文作为提示词。", "success");
+          const result = buildPromptFromScript(obj);
+          ta.value = result.text;
+          if (result.truncated) {
+            KOCApi.showToast(
+              "原创脚本超过 " + MAX_PROMPT_CHARS + " 字，已截取前 " + MAX_PROMPT_CHARS + " 字作为素材描述（提示词）。",
+              "info"
+            );
+          } else {
+            KOCApi.showToast("已载入原创脚本全文作为提示词。", "success");
+          }
         }
+        updateCount();
       });
     }
 
-    // Initial autofill: empty textarea + session payload → fill from script full_text.
-    if (!ta.value) {
-      const obj = readScriptFromSession();
-      if (obj) {
-        const result = buildPromptFromScript(obj);
-        ta.value = result.text;
-        if (result.truncated) {
-          KOCApi.showToast(
-            "原创脚本超过 " + MAX_PROMPT_CHARS + " 字，已截取前 " + MAX_PROMPT_CHARS + " 字作为视频提示词。",
-            "info"
-          );
-        }
-      }
-    }
     updateCount();
   }
 
-  // ============================================================================
-  // Submit + Poll
-  // ============================================================================
   async function startGenerate(submitBtn) {
     const ta = $("#t2v-prompt");
     const sizeSel = $("#t2v-size");
@@ -166,7 +265,7 @@
 
     const prompt = (ta && ta.value || "").trim();
     if (!prompt) {
-      KOCApi.showToast("请填写视频提示词。", "error");
+      KOCApi.showToast("请填写素材描述（提示词），或先选择分镜。", "error");
       if (ta) ta.focus();
       return;
     }
@@ -182,6 +281,8 @@
       return;
     }
 
+    const shotPreview = state.shots.length > 0 && state.selectedShotIndex >= 0;
+
     showStage("loading");
     state.startedAt = Date.now();
     startElapsedTicker();
@@ -194,6 +295,7 @@
         size: sizeSel ? sizeSel.value : "720x1280",
         quality: qualitySel ? qualitySel.value : "speed",
         with_audio: audioCb ? audioCb.checked : false,
+        shot_preview_mode: shotPreview,
       });
     } catch (e) {
       stopElapsedTicker();
@@ -220,7 +322,6 @@
     const deadline = Date.now() + POLL_HARD_TIMEOUT_MS;
 
     while (Date.now() < deadline) {
-      // Single-task in-flight: if user hit "重新生成" mid-poll, taskId got nulled.
       if (state.taskId !== taskId) return;
 
       let resp;
@@ -231,10 +332,6 @@
           throw new Error(resp && (resp.detail || resp.message) || ("HTTP " + r.status));
         }
       } catch (e) {
-        // Transient error: log + sleep + retry. Don't fail the whole poll on a
-        // single network hiccup — that would frustrate users on flaky networks.
-        // After 3 consecutive errors we give up so we don't loop forever
-        // against a permanently-broken endpoint.
         state._consecutiveErrors = (state._consecutiveErrors || 0) + 1;
         if (state._consecutiveErrors >= 3) {
           stopElapsedTicker();
@@ -256,11 +353,9 @@
         showError(resp.fail_reason || "上游模型返回失败状态，未提供具体原因。");
         return;
       }
-      // pending → continue polling
       await sleep(POLL_INTERVAL_MS);
     }
 
-    // Hard timeout
     stopElapsedTicker();
     showError(
       "已等待 8 分钟仍未完成——任务可能在排队。task_id：" +
@@ -269,9 +364,6 @@
     );
   }
 
-  // ============================================================================
-  // Result / Error rendering
-  // ============================================================================
   function renderResult(resp) {
     showStage("result");
     const video = $("#t2v-result-video");
@@ -297,7 +389,7 @@
     }
     if (durEl) durEl.textContent = usedSeconds + " 秒";
 
-    KOCApi.showToast("视频生成完成 · 用时 " + usedSeconds + " 秒", "success");
+    KOCApi.showToast("分镜素材生成完成 · 用时 " + usedSeconds + " 秒", "success");
   }
 
   function showError(msg) {
@@ -307,9 +399,6 @@
     KOCApi.showToast(msg.length > 80 ? msg.slice(0, 80) + "…" : msg, "error");
   }
 
-  // ============================================================================
-  // Elapsed ticker (visual feedback during long polls)
-  // ============================================================================
   function startElapsedTicker() {
     state.elapsedTimerId = setInterval(() => {
       const el = document.querySelector("[data-koc-elapsed]");
@@ -325,9 +414,6 @@
     }
   }
 
-  // ============================================================================
-  // Event bindings
-  // ============================================================================
   function bindGenerate() {
     const btn = document.querySelector('[data-koc-action="start-generate"]');
     if (!btn) return;
@@ -340,8 +426,6 @@
   function bindRegenerate() {
     document.querySelectorAll('[data-koc-action="regenerate"]').forEach((btn) => {
       btn.addEventListener("click", () => {
-        // Cancel any in-flight poll by null'ing taskId — pollUntilDone checks
-        // `state.taskId !== taskId` and exits cleanly.
         state.taskId = null;
         state._consecutiveErrors = 0;
         stopElapsedTicker();
@@ -350,9 +434,6 @@
     });
   }
 
-  // ============================================================================
-  // Boot
-  // ============================================================================
   document.addEventListener("DOMContentLoaded", () => {
     bindPromptForm();
     bindGenerate();

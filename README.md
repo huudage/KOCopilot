@@ -19,7 +19,7 @@ KOCopilot 把"人设定位 → 内容生产 → 长尾分发 → 互动运营"�
    - `feature-1.html` 爆款拆解 + 脚本引擎
    - `feature-3.html` 标题车间（**仅抖音**，去除多平台切换）
    - `feature-4.html` 评论分拣
-   - `feature-5.html` **解说视频生成（智谱清影 CogVideoX-3，默认）**
+   - `feature-5.html` **分镜素材生成（智谱清影 CogVideoX-3，默认；导出后在剪映等软件剪辑成片）**
 
 ### 1.2 仓库结构
 
@@ -27,7 +27,7 @@ KOCopilot 把"人设定位 → 内容生产 → 长尾分发 → 互动运营"�
 koc-copilot/
 ├── index.html                         # 首页（产品说明 / 落地页）
 ├── workspace.html                     # 工作台（含 localStorage 历史看板）
-├── feature-1.html ~ feature-5.html    # 5 个功能页（feature-5 = 智谱文生视频）
+├── feature-1.html ~ feature-5.html    # 5 个功能页（feature-5 = 智谱分镜短视频素材）
 ├── styles.css / app-screens.css       # 全站样式（CSS 变量 = 单点换皮）
 ├── api.js                             # 前端 API 客户端（fetch / loading / toast）
 ├── interactions.js                    # 4 个表单的提交-渲染逻辑（feature-1/2/3/4）
@@ -128,6 +128,8 @@ DEEPSEEK_API_KEY=sk-xxxxxxxxxxxx
 
 若任意 DeepSeek 步骤报错「模型连续两次未返回合法 JSON」，且后端日志里的 snippet 像**半截 JSON**，多半是 **completion 被 `max_tokens` 截断**。可在 `server/.env` 按需提高对应上限（均为最大 8192）：`LLM_SKELETON_MAX_TOKENS`、`LLM_SCRIPT_MAX_TOKENS`（脚本含 `full_text` 最长）、`LLM_COMMENTS_MAX_TOKENS`、`LLM_PERSONA_MAX_TOKENS`、`LLM_SEO_MAX_TOKENS`、`LLM_QA_MAX_TOKENS`；或缩短输入台词/评论再试。
 
+爆款拆解等接口的 **`transcript`（粘贴台词）** 与后端 `schemas.TRANSCRIPT_MAX_CHARS` 对齐（默认 **50000** 字）；超出请删减或分段后再提交。
+
 > **注意**：DeepSeek API 是**真实付费**的。每次点击「生成 / 拆解 / 分拣」都会扣 token。
 > v0.1 没做配额限制；如需自我保护可临时切回 `LLM_PROVIDER=mock`。
 
@@ -173,9 +175,9 @@ curl.exe -F "file=@your-audio.mp3;type=audio/mpeg" http://127.0.0.1:8090/api/asr
 
 **首次浏览器 ASR 流程**
 
-1. 选一个视频（mp4/mov，≤ 5 分钟）
+1. 选一个视频（mp4/mov，**建议约 1 分钟**，更长亦可但解析更慢、更易触达体积上限）
 2. 浏览器自动下载 ffmpeg-core wasm（约 30 MB，只下一次）
-3. ffmpeg.wasm 抽出 16kHz 单声道 mp3（5 分钟视频约 600 KB）
+3. ffmpeg.wasm 抽出 16kHz 单声道 mp3（约 1 分钟量级通常数百 KB 级）
 4. 上传到后端 → 后端 base64 编码 → 一次请求豆包极速版 → 2-5 秒返回文本
 5. 文本自动填入下方 textarea，"用 AI 拆解骨架"按钮高亮闪烁
 
@@ -191,8 +193,8 @@ ffmpeg.wasm 0.12 用 SharedArrayBuffer 跨线程传数据，浏览器要求页�
 **豆包 ASR 价格参考**（2026.05，极速版与标准版价格相近）
 
 - 极速版：约 ¥0.0008 / 秒 = ¥0.05 / 分钟 = ¥3 / 小时
-- 5 分钟视频 ≈ ¥0.25 / 次
-- 100 用户 × 每天 5 次 × 5 分钟 ≈ ¥125 / 天，需要在前端做配额（v0.5 待办）
+- 1 分钟视频 ≈ ¥0.05 / 次（示意）
+- 100 用户 × 每天 5 次 × 1 分钟 ≈ ¥25 / 天（示意），需要在前端做配额（v0.5 待办）
 
 ### 2.5 T2V：智谱清影文生视频（默认 **CogVideoX-3**，v0.9 起第 7 个 AI 干预点）
 
@@ -212,7 +214,7 @@ prompt 输入 ─→ POST /api/t2v/submit ─→ T2VClient.submit() ─→ POST 
 
 **默认开箱即用（mock 模式）**：未配置 `ZHIPU_API_KEY` 时自动降级到 `MockT2VClient`——8 秒后返回示例视频 URL，前端轮询 UI 完整跑通，离线演示零依赖。
 
-从 `feature-1` 第 4 步进入时，**默认提示词 = 原创脚本全文**（`full_text`，与「复制纯文本」一致）。智谱单次 prompt 有 **500 字**硬上限，超出时自动截取前 500 字；用户仍可在 `feature-5` 内编辑后再提交。
+从 `feature-1` 第 4 步进入 `feature-5` 时：若有结构化脚本，页面会列出 **Hook / 各分镜 / CTA** 供**单选**；提交时带 `shot_preview_mode: true`，服务端拼接固定**分镜演示系统提示词**并请求 **cogvideox-3 约 10 秒**成片（预期画面预览）。无分镜数据时可在文本框自由填写提示词；智谱单次 prompt **500 字**硬上限不变。另可选请求体字段 `duration_seconds`（5 或 10，仅 v3）在非演示模式下覆盖 `.env` 默认时长。
 
 **接入真实智谱 API**：
 
@@ -512,7 +514,7 @@ bash scripts/deploy.sh
 
 ## 9. 关联文档
 
-- `docs/PRD.md` — 产品需求文档 **v3.0**（含 PRD 迭代记录表 + §3.7 文生视频接入策略论证）。重生成 docx 见 §11.11
+- `docs/PRD.md` — 产品需求文档 **v3.3**（含 PRD 迭代记录表 + §2.6 分镜素材 + §3.7 文生视频策略）。重生成 docx 见 §11.11
 - `docs/AI-DESIGN.md` — 6 个文本类 AI 干预点的 prompt / schema / 三层兜底详解（T2V 干预点的工程详解直接见 `services/t2v_client.py` 顶部 docstring）
 - `docs/screenshots/` — PRD 截图集中目录（`s-01.png` ~ `s-27.png`）。新增截图按下一序号命名即可
 - `docs/screenshots/mapping.json` — 抽图脚本生成的"图 ↔ 章节"映射，供 PRD 作者对照位置
@@ -590,7 +592,7 @@ bash scripts/deploy.sh
 - ✅ **新增 `services/t2v_client.py`**：`T2VClient` 抽象基类 + `ZhipuT2VClient`（智谱 REST；默认 cogvideox-3 自动附加 fps/duration）+ `MockT2VClient`（8 秒后自动 SUCCESS 的内存任务存储）；与 LLMClient/ASRClient 完全对齐 SOLID 风格
 - ✅ **新增 `routers/t2v.py`**：`POST /api/t2v/submit` + `GET /api/t2v/query/{task_id}`；prompt 防御性双层校验（Pydantic schema + 路由层）；T2VError 按 upstream code 映射 400/404/422/502，永不返回 500
 - ✅ **新增 `feature-5.html` + `t2v.js`**：4 阶段状态机（input/loading/result/error）；prompt 自动从 sessionStorage 带入脚本 `scenes[].visual` 字段；轮询逻辑含 5s 间隔、3 次连续失败放弃、8 分钟硬超时、单飞控制
-- ✅ **`feature-1.html` 第 4 步加 CTA**「→ 生成解说视频」；脚本未生成时按钮 disabled，生成成功后 enable + sessionStorage 写入脚本对象（含 `full_text` 供文生视频默认提示词）
+- ✅ **`feature-1.html` 第 4 步加 CTA**「→ 分镜素材生成」；脚本未生成时按钮 disabled，生成成功后 enable + sessionStorage 写入脚本对象（含 `full_text` 供文生视频默认提示词）
 - ✅ **`config.py` 加 5 个 T2V 字段**：`t2v_provider` / `zhipu_api_key` / `zhipu_video_model` / `t2v_max_prompt_chars` / `t2v_mock_duration_seconds`；`/api/health` 同步暴露 `t2v_provider`
 - ✅ **新建 `server/.env.example`**：作为标准配置模板提交进库（不忽略），把 LLM/ASR/T2V 三大模块的环境变量集中说明
 - ✅ **17 个新单测全过 + 零回归**（54 = 37 老 + 17 新）：mock 任务时间渐进、单例保留、factory 降级、Zhipu 构造校验、生命周期端到端、超长 prompt 422、未知任务 404
@@ -598,6 +600,7 @@ bash scripts/deploy.sh
 - ✅ **PRD 升级到 v3.0**：§3.1 表格扩展为 7 行、§3.2 改为"7/7 都是 AI"、新增 §3.7 文生视频接入策略（5 路径评估 + 6 家供应商对比 + 工程落地图）
 - ⚠️ **关键设计选择**：默认 **`cogvideox-3`**（与智谱开放平台主推一致）；服务端对 v3 自动传 `fps`/`duration`。若需低价 6 秒方案，在 `.env` 设 `ZHIPU_VIDEO_MODEL=cogvideox-2`（勿向 v2 请求体写入 fps/duration）。
 - ⏳ **待用户做**：① 去 [智谱开放平台](https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys) 创建 API Key（注册即送 18M Token + 0.5 元/条视频）② 在 server/.env 设 `T2V_PROVIDER=zhipu` + `ZHIPU_API_KEY=<your-key>` ③ 重启后用 feature-5 真测一条视频
+- ✅ **同日增补 · 分镜素材表述与拆解台词上限**：`feature-5` 统一为「分镜素材生成」并引导剪映 / Premiere / 达芬奇剪辑成片；后端 `TRANSCRIPT_MAX_CHARS=50000` 与前端校验对齐；爆款拆解上传建议改为「约 1 分钟」量级素材。
 - ⏳ **v1.0 计划**：① 演进路径 A → 路径 D（叠加 TTS 配音 + 字幕合成出完整 AI 解说视频）② 用户级视频额度配额 ③ 任务失败原因结构化分类（区分内容审核 / 余额不足 / 临时错误）
 
 ### 2026-05-05 第九次交付（PRD v2.0 + 文档构建工作流自动化）
