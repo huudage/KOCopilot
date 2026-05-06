@@ -19,7 +19,7 @@ KOCopilot 把"人设定位 → 内容生产 → 长尾分发 → 互动运营"�
    - `feature-1.html` 爆款拆解 + 脚本引擎
    - `feature-3.html` 标题车间（**仅抖音**，去除多平台切换）
    - `feature-4.html` 评论分拣
-   - `feature-5.html` **解说视频生成（v0.9 实验功能 · 智谱清影 CogVideoX-3，默认）**
+   - `feature-5.html` **解说视频生成（智谱清影 CogVideoX-3，默认）**
 
 ### 1.2 仓库结构
 
@@ -27,7 +27,7 @@ KOCopilot 把"人设定位 → 内容生产 → 长尾分发 → 互动运营"�
 koc-copilot/
 ├── index.html                         # 首页（产品说明 / 落地页）
 ├── workspace.html                     # 工作台（含 localStorage 历史看板）
-├── feature-1.html ~ feature-5.html    # 5 个功能页（feature-5 = v0.9 文生视频实验）
+├── feature-1.html ~ feature-5.html    # 5 个功能页（feature-5 = 智谱文生视频）
 ├── styles.css / app-screens.css       # 全站样式（CSS 变量 = 单点换皮）
 ├── api.js                             # 前端 API 客户端（fetch / loading / toast）
 ├── interactions.js                    # 4 个表单的提交-渲染逻辑（feature-1/2/3/4）
@@ -211,6 +211,8 @@ prompt 输入 ─→ POST /api/t2v/submit ─→ T2VClient.submit() ─→ POST 
 ```
 
 **默认开箱即用（mock 模式）**：未配置 `ZHIPU_API_KEY` 时自动降级到 `MockT2VClient`——8 秒后返回示例视频 URL，前端轮询 UI 完整跑通，离线演示零依赖。
+
+从 `feature-1` 第 4 步进入时，**默认提示词 = 原创脚本全文**（`full_text`，与「复制纯文本」一致）。智谱单次 prompt 有 **500 字**硬上限，超出时自动截取前 500 字；用户仍可在 `feature-5` 内编辑后再提交。
 
 **接入真实智谱 API**：
 
@@ -588,7 +590,7 @@ bash scripts/deploy.sh
 - ✅ **新增 `services/t2v_client.py`**：`T2VClient` 抽象基类 + `ZhipuT2VClient`（智谱 REST；默认 cogvideox-3 自动附加 fps/duration）+ `MockT2VClient`（8 秒后自动 SUCCESS 的内存任务存储）；与 LLMClient/ASRClient 完全对齐 SOLID 风格
 - ✅ **新增 `routers/t2v.py`**：`POST /api/t2v/submit` + `GET /api/t2v/query/{task_id}`；prompt 防御性双层校验（Pydantic schema + 路由层）；T2VError 按 upstream code 映射 400/404/422/502，永不返回 500
 - ✅ **新增 `feature-5.html` + `t2v.js`**：4 阶段状态机（input/loading/result/error）；prompt 自动从 sessionStorage 带入脚本 `scenes[].visual` 字段；轮询逻辑含 5s 间隔、3 次连续失败放弃、8 分钟硬超时、单飞控制
-- ✅ **`feature-1.html` 第 4 步加 CTA**「→ 生成解说视频（实验）」；脚本未生成时按钮 disabled，生成成功后 enable + sessionStorage 写入结构化脚本对象
+- ✅ **`feature-1.html` 第 4 步加 CTA**「→ 生成解说视频」；脚本未生成时按钮 disabled，生成成功后 enable + sessionStorage 写入脚本对象（含 `full_text` 供文生视频默认提示词）
 - ✅ **`config.py` 加 5 个 T2V 字段**：`t2v_provider` / `zhipu_api_key` / `zhipu_video_model` / `t2v_max_prompt_chars` / `t2v_mock_duration_seconds`；`/api/health` 同步暴露 `t2v_provider`
 - ✅ **新建 `server/.env.example`**：作为标准配置模板提交进库（不忽略），把 LLM/ASR/T2V 三大模块的环境变量集中说明
 - ✅ **17 个新单测全过 + 零回归**（54 = 37 老 + 17 新）：mock 任务时间渐进、单例保留、factory 降级、Zhipu 构造校验、生命周期端到端、超长 prompt 422、未知任务 404

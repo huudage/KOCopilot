@@ -601,11 +601,10 @@
             sessionStorage.setItem("koc.lastScriptForSeo", resp.full_text);
           }
         } catch (_) {}
-        // 把脚本结构化对象也存一份给「解说视频生成」用（v0.9 新增）。
-        // 不存 full_text 而是结构化数据是为了让 feature-5.html 自由拼装 prompt——
-        // 比如取第一个 scene.visual 作为画面建议（更适合 T2V），而不是把口播稿丢给视频模型。
+        // 把脚本结构化对象 + full_text 存给「解说视频生成」：默认提示词为原创脚本全文（见 t2v.js）。
         try {
           sessionStorage.setItem("koc.lastScriptForT2V", JSON.stringify({
+            full_text: resp.full_text || "",
             hook_narration: resp.hook_narration || "",
             scenes: resp.scenes || [],
             cta_narration: resp.cta_narration || "",

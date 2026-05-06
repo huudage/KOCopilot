@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>解说视频生成（实验）— KOCopilot</title>
+    <title>解说视频生成 — KOCopilot</title>
     <meta
       name="description"
       content="基于脚本一键生成短视频片段（默认智谱清影 CogVideoX-3，5 或 10 秒），可下载 MP4 直接发布。"
@@ -132,10 +132,10 @@
 
     <main id="main">
       <header class="koc-hero">
-        <span class="koc-badge">v0.9 实验功能 · 智谱清影 CogVideoX-3</span>
+        <span class="koc-badge">智谱清影 · CogVideoX-3</span>
         <h1>解说<em>视频生成</em></h1>
         <p class="koc-lead">
-          脚本写完了，但不愿出镜？把第 4 步的脚本带过来，AI 直接生成 <b>短视频片段</b>（默认 5 秒，可在服务端配置为 10 秒），可下载 MP4 拼到剪映里。官网主推 <b>CogVideoX-3</b>：约 ¥1/次、30–120 秒级返回。
+          脚本写完了，但不愿出镜？进入本页后会把爆款拆解第 4 步的<b>原创脚本全文</b>（默认）作为视频生成提示词提交给模型（超长时按接口上限自动截取）。生成 <b>短视频片段</b>（默认 5 秒，可在服务端配置为 10 秒），可下载 MP4 拼到剪映里。<b>CogVideoX-3</b>：约 ¥1/次、30–120 秒级返回。
         </p>
       </header>
 
@@ -145,25 +145,24 @@
       <article class="koc-panel" data-koc-stage="input" hidden>
         <div class="koc-panel__head">
           <div>
-            <h2>1. 描述要生成什么画面</h2>
+            <h2>1. 视频提示词</h2>
             <p>
-              建议结构：<b>主体（描述）+ 环境 + 镜头 / 光线 + 氛围</b>。例：
-              <em>"一杯冰美式咖啡（特写镜头），木桌、暖色台灯、窗外清晨光线，水雾缓慢冒出。"</em>
+              默认填入爆款拆解第 4 步的<strong>原创脚本全文</strong>（与「复制纯文本」一致）。智谱单次接口上限 <strong>500 字</strong>，超出会自动截取前 500 字；你可再在下方编辑。
             </p>
           </div>
           <button
             class="btn btn-ghost sm"
             type="button"
             data-koc-action="import-script"
-            title="读取最近一次脚本生成结果，自动填充提示词"
-          >从最近脚本带入</button>
+            title="重新读取最近一次原创脚本全文填充提示词"
+          >重新载入脚本</button>
         </div>
 
         <textarea
           id="t2v-prompt"
           class="koc-comment-input"
           rows="5"
-          placeholder="例：镜头从三瓶护肤品平移到三张成分表，红笔圈出相同成分；木桌、自然光、平静专业的氛围。"
+          placeholder="默认：原创脚本全文（可编辑）。也可改为纯画面描述。"
           maxlength="500"
           aria-label="视频提示词"
         ></textarea>

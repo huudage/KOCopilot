@@ -55,30 +55,36 @@
   }
 
   // ============================================================================
-  // Prompt seeding
-  // ----------------------------------------------------------------------------
-  // Why seed from `scenes[].visual` (not `narration`):
-  //   The `visual` field captures camera/scene direction (e.g. "镜头从三瓶产品
-  //   平移到三张成分表"), which is what T2V models actually need. The narration
-  //   is spoken-word口播稿, which would confuse a video model trying to render
-  //   visuals from the dialogue.
-  // Why fall back to hook_narration:
-  //   If the script has no visual hints (rare but possible), we use a slice of
-  //   the hook line so the user has *something* to start editing. Better than
-  //   blank textarea.
+  // Prompt seeding — default: original script `full_text` (same as「复制纯文本」).
+  // Zhipu prompt hard cap = MAX_PROMPT_CHARS (500) — long scripts are head-truncated.
+  // Legacy session payloads without `full_text` fall back to scene visuals + hook.
   // ============================================================================
   function buildPromptFromScript(scriptObj) {
-    if (!scriptObj || typeof scriptObj !== "object") return "";
+    const out = { text: "", truncated: false };
+    if (!scriptObj || typeof scriptObj !== "object") return out;
+
+    const full = typeof scriptObj.full_text === "string" ? scriptObj.full_text.trim() : "";
+    if (full) {
+      out.truncated = full.length > MAX_PROMPT_CHARS;
+      out.text = full.slice(0, MAX_PROMPT_CHARS);
+      return out;
+    }
+
     const scenes = Array.isArray(scriptObj.scenes) ? scriptObj.scenes : [];
     const visuals = scenes
       .map((s) => (s && typeof s.visual === "string") ? s.visual.trim() : "")
       .filter(Boolean)
       .slice(0, VISUAL_HINT_TAKE);
     if (visuals.length) {
-      return visuals.join("，").slice(0, MAX_PROMPT_CHARS);
+      const joined = visuals.join("，");
+      out.truncated = joined.length > MAX_PROMPT_CHARS;
+      out.text = joined.slice(0, MAX_PROMPT_CHARS);
+      return out;
     }
-    const hook = (scriptObj.hook_narration || "").trim();
-    return hook.slice(0, MAX_PROMPT_CHARS);
+    const hook = typeof scriptObj.hook_narration === "string" ? scriptObj.hook_narration.trim() : "";
+    out.truncated = hook.length > MAX_PROMPT_CHARS;
+    out.text = hook.slice(0, MAX_PROMPT_CHARS);
+    return out;
   }
 
   function readScriptFromSession() {
@@ -113,23 +119,37 @@
         const obj = readScriptFromSession();
         if (!obj) {
           KOCApi.showToast(
-            "没有可带入的脚本——请先去「爆款拆解」走完第 4 步再回来。",
+            "没有可带入的脚本——请先在「爆款拆解」完成第 4 步生成原创脚本。",
             "error"
           );
           return;
         }
-        ta.value = buildPromptFromScript(obj);
+        const result = buildPromptFromScript(obj);
+        ta.value = result.text;
         updateCount();
-        KOCApi.showToast("已从最近脚本带入提示词；你可以再编辑。", "success");
+        if (result.truncated) {
+          KOCApi.showToast(
+            "原创脚本超过 " + MAX_PROMPT_CHARS + " 字，已截取前 " + MAX_PROMPT_CHARS + " 字作为视频提示词。",
+            "info"
+          );
+        } else {
+          KOCApi.showToast("已载入原创脚本全文作为提示词。", "success");
+        }
       });
     }
 
-    // 初始自动带入：textarea 为空 + sessionStorage 有数据时才填，
-    // 避免覆盖用户在路上手动调整的草稿。
+    // Initial autofill: empty textarea + session payload → fill from script full_text.
     if (!ta.value) {
       const obj = readScriptFromSession();
       if (obj) {
-        ta.value = buildPromptFromScript(obj);
+        const result = buildPromptFromScript(obj);
+        ta.value = result.text;
+        if (result.truncated) {
+          KOCApi.showToast(
+            "原创脚本超过 " + MAX_PROMPT_CHARS + " 字，已截取前 " + MAX_PROMPT_CHARS + " 字作为视频提示词。",
+            "info"
+          );
+        }
       }
     }
     updateCount();
